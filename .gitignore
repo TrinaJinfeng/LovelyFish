@@ -1,0 +1,21 @@
+## Ignore Visual Studio temporary files, build results, and cache files
+.vs/
+*.user
+*.suo
+*.cache
+*.log
+
+## Build folders
+bin/
+obj/
+
+## Client and Server specific build outputs
+.client/bin/
+.client/obj/
+.server/bin/
+.server/obj/
+
+## Others
+*.dbmdl
+*.pdb
+*.tmp
