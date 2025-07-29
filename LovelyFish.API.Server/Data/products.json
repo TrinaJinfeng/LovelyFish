@@ -1,0 +1,82 @@
+﻿[
+    {
+      
+        "name": "Model: wp-350s",
+        "price": 199,
+        "output": 1000,
+        "wattage": 60,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "过滤器",
+        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+    {
+        
+        "name": "Model: wp-200w",
+        "price": 159,
+        "output": 800,
+        "wattage": 50,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "过滤器",
+        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+    {
+        
+        "name": "Model: 100w",
+        "price": 99,
+        "output": 1000,
+        "wattage": 60,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "过滤器",
+        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+    {
+        
+        "name": "Model: wp-350s",
+        "price": 199,
+        "output": 1000,
+        "wattage": 60,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "过滤器",
+        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+    {
+        
+        "name": "Model: wp-350s",
+        "price": 199,
+        "output": 1000,
+        "wattage": 60,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "过滤器",
+        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+    {
+        
+        "name": "Model: wp-200w",
+        "price": 159,
+        "output": 1400,
+        "wattage": 90,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "过滤器",
+        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+    {
+        
+        "name": "Model: 100w",
+        "price": 99,
+        "output": 7000,
+        "wattage": 160,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "过滤器",
+        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+    {
+        
+        "name": "Model: wp-350s",
+        "price": 199,
+        "output": 700,
+        "wattage": 30,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "过滤器",
+        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    }
+]
