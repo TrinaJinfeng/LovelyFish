@@ -2,81 +2,222 @@
     {
       
         "name": "Model: wp-350s",
-        "price": 199,
-        "output": 1000,
+        "price": 55,
+        "output": 3000,
         "wattage": 60,
         "image": "../assets/uploads/hm.jpg",
-        "category": "过滤器",
-        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+        "category": "Pumps",
+        "features": "output: 3000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
-        
-        "name": "Model: wp-200w",
-        "price": 159,
+
+        "name": "Model: wp-3400",
+        "price": 23,
         "output": 800,
-        "wattage": 50,
+        "wattage": 15,
         "image": "../assets/uploads/hm.jpg",
-        "category": "过滤器",
-        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+        "category": "Pumps",
+        "features": "output: 880L/hr, wattage: 15W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+    {
+
+        "name": "Model: wp-3700",
+        "price": 27,
+        "output": 1200,
+        "wattage": 15,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Pumps",
+        "features": "output: 1200L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
         
-        "name": "Model: 100w",
-        "price": 99,
-        "output": 1000,
+        "name": "Model: wp-5500",
+        "price": 60,
+        "output": 3000,
         "wattage": 60,
         "image": "../assets/uploads/hm.jpg",
-        "category": "过滤器",
-        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+        "category": "Pumps",
+        "features": "output: 3000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
         
-        "name": "Model: wp-350s",
-        "price": 199,
-        "output": 1000,
+        "name": "Model: wp-7200",
+        "price": 100,
+        "output": 5000,
         "wattage": 60,
         "image": "../assets/uploads/hm.jpg",
-        "category": "过滤器",
-        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+        "category": "Pumps",
+        "features": "output: 5000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
         
-        "name": "Model: wp-350s",
-        "price": 199,
-        "output": 1000,
-        "wattage": 60,
-        "image": "../assets/uploads/hm.jpg",
-        "category": "过滤器",
-        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
-    },
-    {
-        
-        "name": "Model: wp-200w",
-        "price": 159,
-        "output": 1400,
+        "name": "Model: wp-9800",
+        "price": 125,
+        "output": 5000,
         "wattage": 90,
         "image": "../assets/uploads/hm.jpg",
-        "category": "过滤器",
-        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+        "category": "Pumps",
+        "features": "output: 5000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
-        
-        "name": "Model: 100w",
-        "price": 99,
-        "output": 7000,
+
+        "name": "Model: wp-100PA",
+        "price": 155,
+        "output": 5000,
         "wattage": 160,
         "image": "../assets/uploads/hm.jpg",
-        "category": "过滤器",
-        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+        "category": "Pumps",
+        "features": "output: 1000L/hr~12000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
-        
-        "name": "Model: wp-350s",
-        "price": 199,
-        "output": 700,
-        "wattage": 30,
+
+        "name": "Model: 100W",
+        "price": 18,
+        "output": 0,
+        "wattage": 100,
         "image": "../assets/uploads/hm.jpg",
-        "category": "过滤器",
-        "features": "output: 1000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+        "category": "Heaters",
+        "features": "wattage: 100W, suitable for tank below 100L"
+    },
+    {
+
+        "name": "Model: 200W",
+        "price": 20,
+        "output": 0,
+        "wattage": 200,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Heaters",
+        "features": "wattage: 200W, suitable for tank below 120L"
+    },
+    {
+
+        "name": "Model: 300W",
+        "price": 25,
+        "output": 0,
+        "wattage": 300,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Heaters",
+        "features": "wattage: 300W, suitable for tank below 150L"
+    },
+    {
+
+        "name": "Model: 500W",
+        "price": 28,
+        "output": 0,
+        "wattage": 500,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Heaters",
+        "features": "wattage: 500W, suitable for tank below 200L"
+    },
+    {
+
+        "name": "Model: wp-3300A",
+        "price": 35,
+        "output": 1800,
+        "wattage": 20,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Filters",
+        "features": "output: 1800L/hr, wattage: 20W, suitable for tank below 100L"
+    },
+    {
+
+        "name": "Model: wp-3300C",
+        "price": 40,
+        "output": 2000,
+        "wattage": 25,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Filters",
+        "features": "output: 2000L/hr, wattage: 25W, suitable for tank below 150L"
+    },
+    {
+
+        "name": "Model: wp-4001",
+        "price": 40,
+        "output": 2000,
+        "wattage": 25,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Filters",
+        "features": "output: 2000L/hr, wattage: 25W, suitable for tank below 100L"
+    },
+    {
+
+        "name": "Model: wp-6001",
+        "price": 45,
+        "output": 2500,
+        "wattage": 35,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Filters",
+        "features": "output: 2500L/hr, wattage: 35W, suitable for tank below 150L"
+    },
+    {
+
+        "name": "Model: 101F",
+        "price": 10,
+        "output": 500,
+        "wattage": 10,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Filters",
+        "features": "output: 500L/hr, wattage: 10W, suitable for tank below 20L"
+    },
+    {
+
+        "name": "Model: wp-948",
+        "price": 40,
+        "output": 3,
+        "wattage": 8,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Air Pumps",
+        "features": "output: 3.4L/hr per outlet, wattage: 8W, 4outlets"
+    },
+    {
+
+        "name": "Model: wp-988",
+        "price": 45,
+        "output": 4,
+        "wattage": 12,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Air Pumps",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
+    },
+    {
+
+        "name": "Model: yp-100",
+        "price": 20,
+        "output": 4,
+        "wattage": 12,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Wave Maker",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
+    },
+    {
+
+        "name": "Model: yp-201",
+        "price": 30,
+        "output": 4,
+        "wattage": 12,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Wave Maker",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
+    },
+    {
+
+        "name": "Model: yp-300",
+        "price": 40,
+        "output": 4,
+        "wattage": 12,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Wave Maker",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
+    },
+    {
+
+        "name": "Model: yp-203",
+        "price": 50,
+        "output": 4,
+        "wattage": 12,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Wave Maker",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
     }
+
 ]

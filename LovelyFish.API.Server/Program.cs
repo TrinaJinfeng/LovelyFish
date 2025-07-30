@@ -45,10 +45,10 @@ app.MapControllers();
 
 app.MapFallbackToFile("/index.html");
 
-using (var scope = app.Services.CreateScope())
-{
-    DataSeeder.Seed(scope.ServiceProvider);
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    DataSeeder.Seed(scope.ServiceProvider);
+//}
 
 using (var scope = app.Services.CreateScope())
 {
@@ -56,30 +56,32 @@ using (var scope = app.Services.CreateScope())
 
     // 确保数据库存在
     context.Database.EnsureCreated();
+    Console.WriteLine("[Seed] 种子方法开始执行");
+    DataSeeder.Seed(scope.ServiceProvider);
 
-    try
-    {
-        var product = new Product
-        {
-            Name = "Test Product",
-            Price = 199,
-            Output = 1000,
-            Wattage = 60,
-            Image = "test.jpg",
-            Category = "测试",
-            Features = "Just test"
-        };
+//    try
+//    {
+//        var product = new Product
+//        {
+//            Name = "Test Product",
+//            Price = 199,
+//            Output = 1000,
+//            Wattage = 60,
+//            Image = "test.jpg",
+//            Category = "测试",
+//            Features = "Just test"
+//        };
 
-        context.Products.Add(product);
-        context.SaveChanges();
-        Console.WriteLine("[Test] 成功插入测试产品！");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("[Test] 插入失败：" + ex.Message);
-        if (ex.InnerException != null)
-            Console.WriteLine("Inner: " + ex.InnerException.Message);
-    }
+//        context.Products.Add(product);
+//        context.SaveChanges();
+//        Console.WriteLine("[Test] 成功插入测试产品！");
+//    }
+//    catch (Exception ex)
+//    {
+//        Console.WriteLine("[Test] 插入失败：" + ex.Message);
+//        if (ex.InnerException != null)
+//            Console.WriteLine("Inner: " + ex.InnerException.Message);
+//    }
 }
 
 app.Run();
