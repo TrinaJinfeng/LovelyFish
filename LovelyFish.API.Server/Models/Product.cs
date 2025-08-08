@@ -18,10 +18,16 @@ namespace LovelyFish.API.Server.Models
 
         public int Wattage { get; set; }
 
+
         public string Image { get; set; } = string.Empty;
 
         public string Category { get; set; } = string.Empty;
 
         public string Features { get; set; } = string.Empty;
+
+        // 新增字段，默认false，表示是否清仓打折商品
+        public bool IsClearance { get; set; } = false;
+
+        public int DiscountPercent { get; set; } = 0;  // 0 表示没折扣
     }
 }
