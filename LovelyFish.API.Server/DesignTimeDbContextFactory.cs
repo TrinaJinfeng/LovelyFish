@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
-using System.IO;
+using System;
 
 namespace LovelyFish.API.Server
 {
@@ -10,12 +10,14 @@ namespace LovelyFish.API.Server
     {
         public LovelyFishContext CreateDbContext(string[] args)
         {
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+
             IConfigurationRoot configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
+                .SetBasePath(basePath)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            string connectionString = configuration.GetConnectionString("DefaultConnection");
+            string connectionString = configuration.GetConnectionString("DefaultConnection")!;
 
             var optionsBuilder = new DbContextOptionsBuilder<LovelyFishContext>();
             optionsBuilder.UseSqlServer(connectionString);

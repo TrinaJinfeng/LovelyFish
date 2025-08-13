@@ -5,7 +5,7 @@
 namespace LovelyFish.API.Server.Migrations
 {
     /// <inheritdoc />
-    public partial class AutoId : Migration
+    public partial class Baseline_EmptyMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -5,7 +5,7 @@
 namespace LovelyFish.API.Server.Migrations
 {
     /// <inheritdoc />
-    public partial class SyncProduct : Migration
+    public partial class AddCartItemsTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

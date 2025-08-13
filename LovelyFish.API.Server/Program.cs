@@ -42,6 +42,19 @@ builder.Services.ConfigureApplicationCookie(options =>
 
     options.LoginPath = "/api/account/login";
     options.LogoutPath = "/api/account/logout";
+
+    options.Events.OnRedirectToLogin = context =>
+    {
+        // 如果是 API 请求，则返回 401 而不是重定向
+        if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == 200)
+        {
+            context.Response.StatusCode = 401;
+            return Task.CompletedTask;
+        }
+        // 其他情况继续默认重定向
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
 // 配置 CORS：允许 React 前端携带 Cookie

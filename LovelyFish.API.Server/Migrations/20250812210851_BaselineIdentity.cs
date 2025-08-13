@@ -5,7 +5,7 @@
 namespace LovelyFish.API.Server.Migrations
 {
     /// <inheritdoc />
-    public partial class Newdatainput : Migration
+    public partial class BaselineIdentity : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

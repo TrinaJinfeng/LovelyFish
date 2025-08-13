@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using LovelyFish.API.Server.Models;  // 你的 ApplicationUser 命名空间
+using LovelyFish.API.Server.Models;
+
 
 namespace LovelyFish.API.Server.Data
 {
@@ -11,7 +12,10 @@ namespace LovelyFish.API.Server.Data
         {
         }
 
-        // 你可以加其他 DbSet 例如：
-        // public DbSet<Product> Products { get; set; }
+        //public DbSet<Product> Products { get; set; }   
+     
+
+        
     }
 }
+
