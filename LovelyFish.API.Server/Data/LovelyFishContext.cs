@@ -13,6 +13,10 @@ namespace LovelyFish.API.Data
 
         public DbSet<CartItem> CartItems { get; set; }  // 新增购物车项表
 
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
+
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder); // 这一行很重要，要调用基类方法，否则 Identity 的表不会创建

@@ -2,7 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using LovelyFish.API.Server.Models;
 using LovelyFish.API.Data;
-using System.Security.Claims;  
+using System.Security.Claims;
+using LovelyFish.API.Server.Dtos;
+using Swashbuckle.AspNetCore.SwaggerUI;
 
 namespace LovelyFish.Controllers
 {
@@ -18,30 +20,21 @@ namespace LovelyFish.Controllers
         }
 
         // POST /api/cart
-        // 添加商品到购物车，如果已有该商品，数量加一
         [HttpPost]
         public async Task<IActionResult> AddToCart([FromBody] AddCartItemDto dto)
         {
             if (dto == null || dto.ProductId <= 0 || dto.Quantity <= 0)
-            {
                 return BadRequest("参数无效");
-            }
 
-            // 获取当前登录用户ID
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null)
-            {
                 return Unauthorized();
-            }
 
-            // 查找购物车里当前用户是否已有该商品
             var existingItem = await _context.CartItems
                 .FirstOrDefaultAsync(c => c.ProductId == dto.ProductId && c.UserId == userId);
 
             if (existingItem != null)
-            {
                 existingItem.Quantity += dto.Quantity;
-            }
             else
             {
                 var product = await _context.Products.FindAsync(dto.ProductId);
@@ -64,10 +57,15 @@ namespace LovelyFish.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CartItem>>> GetCart()
         {
-            return await _context.CartItems.Include(c => c.Product).ToListAsync();
-        }
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized();
 
-        
+            return await _context.CartItems
+                .Include(c => c.Product)
+                .Where(c => c.UserId == userId)
+                .ToListAsync();
+        }
 
         // POST /api/cart/increment/{id}
         [HttpPost("increment/{id}")]
@@ -91,6 +89,19 @@ namespace LovelyFish.Controllers
             return Ok(item);
         }
 
+        // POST /api/cart/update/{id}?quantity=5
+        [HttpPost("update/{id}")]
+        public async Task<IActionResult> UpdateQuantity(int id, [FromQuery] int quantity)
+        {
+            var item = await _context.CartItems.FindAsync(id);
+            if (item == null) return NotFound();
+            if (quantity < 1) return BadRequest("数量必须大于0");
+
+            item.Quantity = quantity;
+            await _context.SaveChangesAsync();
+            return Ok(item);
+        }
+
         // DELETE /api/cart/remove/{id}
         [HttpDelete("remove/{id}")]
         public async Task<IActionResult> Remove(int id)
@@ -101,14 +112,60 @@ namespace LovelyFish.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+        // POST /api/cart/checkout
+        [HttpPost("checkout")]
+        public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized();
+
+            var cartItems = await _context.CartItems
+                .Include(c => c.Product)
+                .Where(c => c.UserId == userId)
+                .ToListAsync();
+
+            if (!cartItems.Any())
+                return BadRequest("购物车为空");
+
+            var order = new Order
+            {
+                UserId = userId,
+                CreatedAt = DateTime.Now,
+                TotalPrice = cartItems.Sum(c => c.Quantity * c.Product.Price),
+                CustomerName = dto.CustomerName,
+                ShippingAddress = dto.ShippingAddress,
+                OrderItems = cartItems.Select(c => new OrderItem
+                {
+                    ProductId = c.ProductId,
+                    Quantity = c.Quantity,
+                    Price = c.Product.Price
+                }).ToList()
+            };
+
+            _context.Orders.Add(order);
+            _context.CartItems.RemoveRange(cartItems);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { orderId = order.Id });
+        }
     }
 
-    // 简单 DTO 用于接收添加购物车请求数据
-    public class AddCartItemDto
-    {
-        public int ProductId { get; set; }
-        public int Quantity { get; set; } = 1;
-    }
+        // DTO 用于添加购物车
+        public class AddCartItemDto
+        {
+            public int ProductId { get; set; }
+            public int Quantity { get; set; } = 1;
+        }
+
+        // DTO 用于提交订单
+        public class CheckoutDto
+        {
+            public string CustomerName { get; set; } = string.Empty;
+            public string ShippingAddress { get; set; } = string.Empty;
+        }
 }
 
 
@@ -120,3 +177,22 @@ namespace LovelyFish.Controllers
 //保留了你原有的增减数量和删除接口。
 
 //你前端调用添加商品接口时，用 POST 发送 productId 和 quantity，即可新增或增加数量。
+
+//Submit order ：
+//新增 Order / OrderItem 模型
+
+//在 DbContext 注册
+
+//创建 POST /api/cart/checkout 接口
+
+//前端点击 Submit Order 按钮调用即可
+
+//改动说明：
+
+//新增了 CheckoutDto，前端可传递 CustomerName 和 ShippingAddress。
+
+//Checkout 接口接收 [FromBody] CheckoutDto dto，然后把姓名和地址写入 Order 表。
+
+//保留原来的购物车增减、更新、删除接口。
+
+//提交订单后清空购物车，并返回 orderId
