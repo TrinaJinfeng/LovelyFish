@@ -5,8 +5,11 @@ namespace LovelyFish.API.Server.Models
    
   public class ApplicationUser : IdentityUser
         {
-            // 你可以在这里扩展用户属性，比如：
-            // public string FullName { get; set; }
-        }
+        // 用户真实姓名
+        public string? Name { get; set; }
+        public string? Address { get; set; }
+
+        // PhoneNumber 已经在 IdentityUser 里有了，不需要再加
+    }
 }
 

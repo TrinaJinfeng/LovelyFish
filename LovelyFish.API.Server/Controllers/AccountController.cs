@@ -87,9 +87,36 @@ namespace LovelyFish.API.Server.Controllers
 
             return Ok(new
             {
-                name = user.UserName,
-                email = user.Email
+                name = user.Name,
+                email = user.Email,
+                phone = user.PhoneNumber,
+                address = user.Address
             });
+        }
+
+        // POST api/account/update-profile
+        [HttpPost("update-profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+                return Unauthorized();
+
+            user.Name = model.Name;
+            user.PhoneNumber = model.Phone;
+            user.Address = model.Address;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+
+            return Ok(new { message = "资料更新成功" });
         }
 
         // POST api/account/forgot-password
@@ -206,6 +233,18 @@ namespace LovelyFish.API.Server.Controllers
 
         [Required]
         public string NewPassword { get; set; } = string.Empty;
+    }
+
+    public class UpdateProfileRequest
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public string Phone { get; set; } = string.Empty;
+
+        [Required]
+        public string Address { get; set; } = string.Empty;
     }
 }
 

@@ -121,13 +121,16 @@ namespace LovelyFish.Controllers
             if (userId == null)
                 return Unauthorized();
 
+            if (dto.CartItemIds == null || !dto.CartItemIds.Any())
+                return BadRequest("请至少选择一个商品");
+
             var cartItems = await _context.CartItems
                 .Include(c => c.Product)
-                .Where(c => c.UserId == userId)
+                .Where(c => c.UserId == userId && dto.CartItemIds.Contains(c.Id))
                 .ToListAsync();
 
             if (!cartItems.Any())
-                return BadRequest("购物车为空");
+                return BadRequest("没有有效的购物车商品");
 
             var order = new Order
             {
@@ -165,7 +168,8 @@ namespace LovelyFish.Controllers
         {
             public string CustomerName { get; set; } = string.Empty;
             public string ShippingAddress { get; set; } = string.Empty;
-        }
+            public List<int> CartItemIds { get; set; } = new List<int>(); // 新增
+    }
 }
 
 
