@@ -90,7 +90,8 @@ namespace LovelyFish.API.Server.Controllers
                 name = user.Name,
                 email = user.Email,
                 phone = user.PhoneNumber,
-                address = user.Address
+                address = user.Address,
+                newUserUsed = user.NewUserCouponUsed  // 新增字段
             });
         }
 

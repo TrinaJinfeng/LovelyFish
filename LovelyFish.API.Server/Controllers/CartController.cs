@@ -5,6 +5,8 @@ using LovelyFish.API.Data;
 using System.Security.Claims;
 using LovelyFish.API.Server.Dtos;
 using Swashbuckle.AspNetCore.SwaggerUI;
+using LovelyFish.API.Server.Models.Dtos;
+using System.Numerics;
 
 namespace LovelyFish.Controllers
 {
@@ -113,7 +115,57 @@ namespace LovelyFish.Controllers
             return NoContent();
         }
 
-        // POST /api/cart/checkout
+        // POST /api/cart/estimate---> estimatediscount
+        [HttpPost("estimate")]
+        public async Task<IActionResult> Estimate([FromBody] CheckoutDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized();
+
+            if (dto.CartItemIds == null || !dto.CartItemIds.Any())
+                return BadRequest("请至少选择一个商品");
+
+            var cartItems = await _context.CartItems
+                .Include(c => c.Product)
+                .Where(c => c.UserId == userId && dto.CartItemIds.Contains(c.Id))
+                .ToListAsync();
+
+            if (!cartItems.Any())
+                return BadRequest("没有有效的购物车商品");
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null) return NotFound("用户不存在");
+
+            // 计算总价和折扣逻辑（和 Checkout 一致）
+            decimal originalTotal = cartItems.Sum(c => c.Quantity * c.Product.Price);
+            decimal discount = 0;
+
+            // 新用户券
+            if (dto.UseNewUserCoupon && !user.NewUserCouponUsed)
+                discount += 5;
+
+            // 累积消费优惠（只能选一个满减券）
+            decimal accumulatedWithCurrent = user.AccumulatedAmount + originalTotal;
+            decimal fullReduction = 0;
+            if (dto.Use100Coupon && accumulatedWithCurrent >= 100)
+                fullReduction = 10;
+            else if (dto.Use50Coupon && accumulatedWithCurrent >= 50)
+                fullReduction = 5;
+
+            discount += fullReduction;
+
+            return Ok(new
+            {
+                totalQuantity = cartItems.Sum(c => c.Quantity),
+                originalTotal,
+                discount,
+                finalTotal = Math.Max(originalTotal - discount, 0),
+                canUseNewUserCoupon = !user.NewUserCouponUsed
+            });
+        } 
+
+        // POST /api/cart/checkout ---> submit order
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto)
         {
@@ -132,13 +184,61 @@ namespace LovelyFish.Controllers
             if (!cartItems.Any())
                 return BadRequest("没有有效的购物车商品");
 
+            // 取用户电话
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null) return NotFound("用户不存在");
+
+            Console.WriteLine($"[DEBUG] User ID: {user.Id}");
+            Console.WriteLine($"[DEBUG] NewUserCouponUsed: {user.NewUserCouponUsed}");
+
+            var phone = user?.PhoneNumber ?? string.Empty;
+
+            // 计算原始订单总价
+            decimal originalTotal = cartItems.Sum(c => c.Quantity * c.Product.Price);
+
+            // 计算折扣
+            decimal discount = 0;
+
+            // 新用户优惠 $5
+            if (dto.UseNewUserCoupon && !user.NewUserCouponUsed)
+            {
+                discount += 5;
+                user.NewUserCouponUsed = true;
+            }
+
+            // 累积消费优惠（按本次订单 + 累计消费判断）
+            decimal accumulatedWithCurrent = user.AccumulatedAmount + originalTotal;
+
+            if (dto.Use100Coupon && accumulatedWithCurrent >= 100)
+            {
+                discount += 10;
+                user.AccumulatedAmount = 0; // 使用后清零
+            }
+            else if (dto.Use50Coupon && accumulatedWithCurrent >= 50)
+            {
+                discount += 5;
+                user.AccumulatedAmount = 0;
+            }
+            else
+            {
+                // 如果没用优惠券，累计金额加本次订单
+                user.AccumulatedAmount += originalTotal;
+            }
+
+            // 最终总价
+            decimal finalTotal = Math.Max(originalTotal - discount, 0);
+
+
             var order = new Order
             {
                 UserId = userId,
                 CreatedAt = DateTime.Now,
-                TotalPrice = cartItems.Sum(c => c.Quantity * c.Product.Price),
+                TotalPrice = finalTotal,
                 CustomerName = dto.CustomerName,
                 ShippingAddress = dto.ShippingAddress,
+                PhoneNumber = phone,  // ← Profile电话
+                ContactPhone = dto.Phone,          // ✅ ConfirmOrderPage电话 双层确认
+
                 OrderItems = cartItems.Select(c => new OrderItem
                 {
                     ProductId = c.ProductId,
@@ -152,24 +252,21 @@ namespace LovelyFish.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { orderId = order.Id });
+            return Ok(new { 
+                orderId = order.Id,
+                originalTotal,
+                totalPrice = finalTotal,
+                newUserUsed = user.NewUserCouponUsed,
+                discount
+
+            });
         }
     }
 
-        // DTO 用于添加购物车
-        public class AddCartItemDto
-        {
-            public int ProductId { get; set; }
-            public int Quantity { get; set; } = 1;
-        }
+     
 
-        // DTO 用于提交订单
-        public class CheckoutDto
-        {
-            public string CustomerName { get; set; } = string.Empty;
-            public string ShippingAddress { get; set; } = string.Empty;
-            public List<int> CartItemIds { get; set; } = new List<int>(); // 新增
-    }
+        
+    
 }
 
 
@@ -200,3 +297,11 @@ namespace LovelyFish.Controllers
 //保留原来的购物车增减、更新、删除接口。
 
 //提交订单后清空购物车，并返回 orderId
+
+//前端调用 / cart / estimate 就能拿到 原价、折扣、最终价，不用再自己算。
+
+///cart/checkout 完整生成订单，数据库状态更新。
+
+//新人券 + 满减券逻辑统一在后端计算，保证前端显示与最终订单一致。
+
+//累积消费优惠只能选一个满减券，逻辑和你之前描述一致。

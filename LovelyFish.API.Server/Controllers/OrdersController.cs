@@ -36,8 +36,11 @@ public class OrdersController : ControllerBase
                 Id = o.Id,
                 CreatedAt = o.CreatedAt,
                 TotalPrice = o.TotalPrice,
-                CustomerName = o.CustomerName,           // DTO 新增字段
-                ShippingAddress = o.ShippingAddress,     // DTO 新增字段
+                CustomerName = o.CustomerName ?? "",           // 防止 null
+                ShippingAddress = o.ShippingAddress ?? "",     // 防止 null
+                PhoneNumber = o.PhoneNumber ?? "",             // Profile 电话
+                ContactPhone = o.ContactPhone ?? "",           // ConfirmOrderPage 电话
+
                 OrderItems = o.OrderItems.Select(oi => new OrderItemDto
                 {
                     Id = oi.Id,
@@ -51,6 +54,8 @@ public class OrdersController : ControllerBase
         }
         catch (Exception ex)
         {
+            // 输出完整异常，方便调试
+            Console.WriteLine("GetMyOrders Error: " + ex);
             return StatusCode(500, new { message = ex.Message, stack = ex.StackTrace });
         }
     }
