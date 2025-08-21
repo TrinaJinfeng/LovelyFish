@@ -115,57 +115,7 @@ namespace LovelyFish.Controllers
             return NoContent();
         }
 
-        // POST /api/cart/estimate---> estimatediscount
-        [HttpPost("estimate")]
-        public async Task<IActionResult> Estimate([FromBody] CheckoutDto dto)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
-                return Unauthorized();
 
-            if (dto.CartItemIds == null || !dto.CartItemIds.Any())
-                return BadRequest("请至少选择一个商品");
-
-            var cartItems = await _context.CartItems
-                .Include(c => c.Product)
-                .Where(c => c.UserId == userId && dto.CartItemIds.Contains(c.Id))
-                .ToListAsync();
-
-            if (!cartItems.Any())
-                return BadRequest("没有有效的购物车商品");
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null) return NotFound("用户不存在");
-
-            // 计算总价和折扣逻辑（和 Checkout 一致）
-            decimal originalTotal = cartItems.Sum(c => c.Quantity * c.Product.Price);
-            decimal discount = 0;
-
-            // 新用户券
-            if (dto.UseNewUserCoupon && !user.NewUserCouponUsed)
-                discount += 5;
-
-            // 累积消费优惠（只能选一个满减券）
-            decimal accumulatedWithCurrent = user.AccumulatedAmount + originalTotal;
-            decimal fullReduction = 0;
-            if (dto.Use100Coupon && accumulatedWithCurrent >= 100)
-                fullReduction = 10;
-            else if (dto.Use50Coupon && accumulatedWithCurrent >= 50)
-                fullReduction = 5;
-
-            discount += fullReduction;
-
-            return Ok(new
-            {
-                totalQuantity = cartItems.Sum(c => c.Quantity),
-                originalTotal,
-                discount,
-                finalTotal = Math.Max(originalTotal - discount, 0),
-                canUseNewUserCoupon = !user.NewUserCouponUsed
-            });
-        } 
-
-        // POST /api/cart/checkout ---> submit order
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto)
         {
@@ -173,18 +123,31 @@ namespace LovelyFish.Controllers
             if (userId == null)
                 return Unauthorized();
 
-            if (dto.CartItemIds == null || !dto.CartItemIds.Any())
+            // 确认 items 存在
+            if (dto.Items == null || !dto.Items.Any())
                 return BadRequest("请至少选择一个商品");
+
+            var itemIds = dto.Items.Select(i => i.Id).ToList();
 
             var cartItems = await _context.CartItems
                 .Include(c => c.Product)
-                .Where(c => c.UserId == userId && dto.CartItemIds.Contains(c.Id))
+                .Where(c => c.UserId == userId && itemIds.Contains(c.Id))
                 .ToListAsync();
 
             if (!cartItems.Any())
                 return BadRequest("没有有效的购物车商品");
 
-            // 取用户电话
+            // 更新数量（以前端传的为准）
+            foreach (var dtoItem in dto.Items)
+            {
+                var cartItem = cartItems.FirstOrDefault(c => c.Id == dtoItem.Id);
+                if (cartItem != null)
+                {
+                    cartItem.Quantity = dtoItem.Quantity;
+                }
+            }
+
+            // 获取用户信息
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return NotFound("用户不存在");
 
@@ -199,16 +162,19 @@ namespace LovelyFish.Controllers
             // 计算折扣
             decimal discount = 0;
 
-            // 新用户优惠 $5
+            // 新人卷（仅一次）
             if (dto.UseNewUserCoupon && !user.NewUserCouponUsed)
             {
                 discount += 5;
                 user.NewUserCouponUsed = true;
             }
 
-            // 累积消费优惠（按本次订单 + 累计消费判断）
-            decimal accumulatedWithCurrent = user.AccumulatedAmount + originalTotal;
+            // 检查 50/100 卷互斥
+            if (dto.Use50Coupon && dto.Use100Coupon)
+                return BadRequest("50 coupon and 100 coupon cannot be used together");
 
+            // 累计消费 + 本次订单
+            decimal accumulatedWithCurrent = user.AccumulatedAmount + originalTotal;
             if (dto.Use100Coupon && accumulatedWithCurrent >= 100)
             {
                 discount += 10;
@@ -217,18 +183,18 @@ namespace LovelyFish.Controllers
             else if (dto.Use50Coupon && accumulatedWithCurrent >= 50)
             {
                 discount += 5;
-                user.AccumulatedAmount = 0;
+                user.AccumulatedAmount = 0; // 使用后清零
             }
             else
             {
-                // 如果没用优惠券，累计金额加本次订单
+                // 没用 50/100 卷，累计金额累加
                 user.AccumulatedAmount += originalTotal;
             }
 
-            // 最终总价
+            // 最终总价，不能小于 0
             decimal finalTotal = Math.Max(originalTotal - discount, 0);
 
-
+            // 创建订单
             var order = new Order
             {
                 UserId = userId,
@@ -236,9 +202,8 @@ namespace LovelyFish.Controllers
                 TotalPrice = finalTotal,
                 CustomerName = dto.CustomerName,
                 ShippingAddress = dto.ShippingAddress,
-                PhoneNumber = phone,  // ← Profile电话
-                ContactPhone = dto.Phone,          // ✅ ConfirmOrderPage电话 双层确认
-
+                PhoneNumber = phone,        // Profile 电话
+                ContactPhone = dto.Phone,   // 下单页面电话
                 OrderItems = cartItems.Select(c => new OrderItem
                 {
                     ProductId = c.ProductId,
@@ -252,13 +217,13 @@ namespace LovelyFish.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { 
+            return Ok(new
+            {
                 orderId = order.Id,
                 originalTotal,
                 totalPrice = finalTotal,
                 newUserUsed = user.NewUserCouponUsed,
                 discount
-
             });
         }
     }
@@ -305,3 +270,9 @@ namespace LovelyFish.Controllers
 //新人券 + 满减券逻辑统一在后端计算，保证前端显示与最终订单一致。
 
 //累积消费优惠只能选一个满减券，逻辑和你之前描述一致。
+
+//前端传 items: [{ id, quantity }] 
+
+//后端按 dto.Items 更新购物车数量 
+
+//优惠券 & 累计金额逻辑保持不变 
