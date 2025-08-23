@@ -1,33 +1,38 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace LovelyFish.API.Server.Models
 {
     public class Product
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)] // 自动生成 Id
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]
-        public string Name { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
 
         public decimal Price { get; set; }
+        public int Stock { get; set; }
+        public string Description { get; set; } = string.Empty;
 
-        public int Output { get; set; }
-
-        public int Wattage { get; set; }
-
-
-        public string Image { get; set; } = string.Empty;
-
-        public string Category { get; set; } = string.Empty;
-
-        public string Features { get; set; } = string.Empty;
-
-        // 新增字段，默认false，表示是否清仓打折商品
+        public int DiscountPercent { get; set; } = 0;
         public bool IsClearance { get; set; } = false;
 
-        public int DiscountPercent { get; set; } = 0;  // 0 表示没折扣
+        public string FeaturesJson { get; set; } = string.Empty;
+
+        [NotMapped]
+        public string[] Features
+        {
+            get => string.IsNullOrEmpty(FeaturesJson) ? new string[0] : JsonSerializer.Deserialize<string[]>(FeaturesJson);
+            set => FeaturesJson = JsonSerializer.Serialize(value);
+        }
+
+        [Required]
+        public int CategoryId { get; set; }
+        public Category Category { get; set; }
+
+        public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
     }
 }

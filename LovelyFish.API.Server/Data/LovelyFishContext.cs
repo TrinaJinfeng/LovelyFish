@@ -10,6 +10,8 @@ namespace LovelyFish.API.Data
         : base(options) { }
 
         public DbSet<Product> Products { get; set; }
+        public DbSet<ProductImage> ProductImages { get; set; }  // 新增
+        public DbSet<Category> Categories { get; set; }         // 新增
 
         public DbSet<CartItem> CartItems { get; set; }  // 新增购物车项表
 

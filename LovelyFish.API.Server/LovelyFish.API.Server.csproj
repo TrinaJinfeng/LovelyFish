@@ -9,6 +9,10 @@
     <SpaProxyServerUrl>https://localhost:58479</SpaProxyServerUrl>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Models\AccountController.cs" />
+  </ItemGroup>
+
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
@@ -33,6 +37,11 @@
     <Content Update="Data\products.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Migrations\" />
+    <Folder Include="wwwroot\upload\" />
   </ItemGroup>
 
   

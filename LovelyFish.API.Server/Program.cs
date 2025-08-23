@@ -103,37 +103,44 @@ app.MapFallbackToFile("/index.html");
 
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<LovelyFishContext>();
+    var services = scope.ServiceProvider;
 
-    // 确保数据库存在
+    //1. 产品数据 Seeder
+    var context = services.GetRequiredService<LovelyFishContext>();
     context.Database.EnsureCreated();
-    Console.WriteLine("[Seed] 种子方法开始执行");
-    DataSeeder.Seed(scope.ServiceProvider);
+    Console.WriteLine("[Seed] 产品种子方法开始执行");
+    DataSeeder.Seed(services);
 
-//    try
-//    {
-//        var product = new Product
-//        {
-//            Name = "Test Product",
-//            Price = 199,
-//            Output = 1000,
-//            Wattage = 60,
-//            Image = "test.jpg",
-//            Category = "测试",
-//            Features = "Just test"
-//        };
-
-//        context.Products.Add(product);
-//        context.SaveChanges();
-//        Console.WriteLine("[Test] 成功插入测试产品！");
-//    }
-//    catch (Exception ex)
-//    {
-//        Console.WriteLine("[Test] 插入失败：" + ex.Message);
-//        if (ex.InnerException != null)
-//            Console.WriteLine("Inner: " + ex.InnerException.Message);
-//    }
+    //2. 管理员账号 Seeder
+    Console.WriteLine("[Seed] IdentitySeeder 开始执行");
+    await IdentitySeeder.SeedAdminAsync(services);  // 调用IdentitySeeder
 }
+
+
+    //    try
+    //    {
+    //        var product = new Product
+    //        {
+    //            Name = "Test Product",
+    //            Price = 199,
+    //            Output = 1000,
+    //            Wattage = 60,
+    //            Image = "test.jpg",
+    //            Category = "测试",
+    //            Features = "Just test"
+    //        };
+
+    //        context.Products.Add(product);
+    //        context.SaveChanges();
+    //        Console.WriteLine("[Test] 成功插入测试产品！");
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Console.WriteLine("[Test] 插入失败：" + ex.Message);
+    //        if (ex.InnerException != null)
+    //            Console.WriteLine("Inner: " + ex.InnerException.Message);
+    //    }
+
 
 app.Run();
 
