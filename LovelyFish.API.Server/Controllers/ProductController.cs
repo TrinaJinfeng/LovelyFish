@@ -17,6 +17,14 @@ namespace LovelyFish.API.Server.Controllers
             _context = context;
         }
 
+        // ==================== 私有方法：生成完整图片 URL ====================
+        private string GetImageUrl(string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath)) return null;
+            relativePath = relativePath.TrimStart('/'); // 去掉开头的斜杠
+            return $"https://localhost:7148/upload/{relativePath}";
+        }
+
         // ==================== 获取所有产品 ====================
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
@@ -38,8 +46,13 @@ namespace LovelyFish.API.Server.Controllers
                 Features = p.Features.ToList(), // 转成 List<string> 给前端
                 CategoryId = p.CategoryId,
                 CategoryTitle = p.Category?.Name,
-                ImageUrls = p.Images.Select(i => i.Url).ToList(),
-                MainImageUrl = p.Images.FirstOrDefault()?.Url,// 取第一张作为主图
+                ImageUrls = p.Images
+                    .Where(i => !string.IsNullOrEmpty(i.Url))
+                    .Select(i => GetImageUrl(i.Url))
+                    .ToList(),
+                MainImageUrl = p.Images.FirstOrDefault() != null
+                    ? GetImageUrl(p.Images.First().Url)
+                    : null,
                 IsClearance = p.IsClearance
             });
 
@@ -69,8 +82,13 @@ namespace LovelyFish.API.Server.Controllers
                 Features = product.Features.ToList(),
                 CategoryId = product.CategoryId,
                 CategoryTitle = product.Category?.Name,
-                ImageUrls = product.Images.Select(i => i.Url).ToList(),
-                MainImageUrl = product.Images.FirstOrDefault()?.Url,
+                ImageUrls = product.Images
+                    .Where(i => !string.IsNullOrEmpty(i.Url))
+                    .Select(i => $"https://localhost:7148/upload/{i.Url}")
+                    .ToList(),
+                MainImageUrl = product.Images.FirstOrDefault() != null
+                    ? $"https://localhost:7148/upload/{product.Images.First().Url}"
+                    : null,
                 IsClearance = product.IsClearance
             };
 
@@ -110,8 +128,13 @@ namespace LovelyFish.API.Server.Controllers
                 Features = product.Features.ToList(), // 转成 List<string>
                 CategoryId = product.CategoryId,
                 CategoryTitle = (await _context.Categories.FindAsync(product.CategoryId))?.Name,
-                ImageUrls = product.Images.Select(i => i.Url).ToList(),
-                MainImageUrl = product.Images.FirstOrDefault()?.Url,
+                ImageUrls = product.Images
+                    .Where(i => !string.IsNullOrEmpty(i.Url))
+                    .Select(i => GetImageUrl(i.Url))
+                    .ToList(),
+                MainImageUrl = product.Images.FirstOrDefault() != null
+                    ? GetImageUrl(product.Images.First().Url)
+                    : null,
                 IsClearance = product.IsClearance
             };
 
@@ -162,8 +185,8 @@ namespace LovelyFish.API.Server.Controllers
         }
 
         // ==================== 获取所有分类 ====================
-        [HttpGet("/api/categories")]
-        public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
+        [HttpGet("categories")]
+        public async Task<ActionResult<IEnumerable<Category>>> GetProductCategories()
         {
             var categories = await _context.Categories
                 .Include(c => c.Products)

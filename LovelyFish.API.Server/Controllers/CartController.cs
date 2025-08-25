@@ -157,7 +157,12 @@ namespace LovelyFish.Controllers
             var phone = user?.PhoneNumber ?? string.Empty;
 
             // 计算原始订单总价
-            decimal originalTotal = cartItems.Sum(c => c.Quantity * c.Product.Price);
+            decimal originalTotal = cartItems.Sum(c => {
+                var price = c.Product.DiscountPercent > 0 
+                    ? c.Product.Price * (1 - c.Product.DiscountPercent / 100m) 
+                    : c.Product.Price;
+                return price * c.Quantity;
+});
 
             // 计算折扣
             decimal discount = 0;
@@ -208,7 +213,9 @@ namespace LovelyFish.Controllers
                 {
                     ProductId = c.ProductId,
                     Quantity = c.Quantity,
-                    Price = c.Product.Price
+                    Price = c.Product.DiscountPercent > 0
+                            ? c.Product.Price * (1 - c.Product.DiscountPercent / 100m)
+                            : c.Product.Price
                 }).ToList()
             };
 
@@ -223,7 +230,25 @@ namespace LovelyFish.Controllers
                 originalTotal,
                 totalPrice = finalTotal,
                 newUserUsed = user.NewUserCouponUsed,
-                discount
+                discount,
+                order = new OrderDto
+                {
+                    Id = order.Id,
+                    CreatedAt = order.CreatedAt,
+                    TotalPrice = finalTotal,
+                    CustomerName = order.CustomerName,
+                    ShippingAddress = order.ShippingAddress,
+                    PhoneNumber = order.PhoneNumber,
+                    ContactPhone = order.ContactPhone,
+                    Status = order.Status,
+                    OrderItems = order.OrderItems.Select(oi => new OrderItemDto
+                    {
+                        Id = oi.Id,
+                        ProductName = oi.Product != null ? oi.Product.Title : "Deleted Product",
+                        Quantity = oi.Quantity,
+                        Price = oi.Price
+                    }).ToList()
+                }
             });
         }
     }

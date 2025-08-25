@@ -132,6 +132,7 @@ namespace LovelyFish.API.Server.Controllers
                 OrderItems = o.OrderItems.Select(oi => new OrderItemDto
                 {
                     Id = oi.Id,
+                    ProductId = oi.ProductId,
                     ProductName = oi.Product != null ? oi.Product.Title : "Deleted Product",
                     Quantity = oi.Quantity,
                     Price = oi.Price
