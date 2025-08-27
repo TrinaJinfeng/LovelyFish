@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using LovelyFish.API.Server.Data;
 using LovelyFish.API.Server.Models;
 using LovelyFish.API.Data;
+using LovelyFish.API.Server.Models.Dtos;
 
 namespace LovelyFish.API.Server.Controllers
 {
@@ -63,16 +64,18 @@ namespace LovelyFish.API.Server.Controllers
 
         // PUT api/admin/users/{id}/active
         [HttpPut("{id}/active")]
-        public async Task<IActionResult> ToggleActive(string id, [FromBody] bool active)
+        public async Task<IActionResult> ToggleActive(string id, [FromBody] ToggleActiveDto dto)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
 
-            user.LockoutEnd = active ? null : DateTimeOffset.MaxValue;
+            // active 为 true 表示启用，false 表示禁用
+            user.LockoutEnd = dto.Active ? null : DateTimeOffset.MaxValue;
             await _userManager.UpdateAsync(user);
 
             return Ok();
         }
+
 
         // GET api/admin/users/{userId}/orders
         [HttpGet("{userId}/orders")]

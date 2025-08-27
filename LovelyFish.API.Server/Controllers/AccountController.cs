@@ -85,13 +85,17 @@ namespace LovelyFish.API.Server.Controllers
             if (user == null)
                 return Unauthorized();
 
+            // 这里获取角色列表
+            var roles = await _userManager.GetRolesAsync(user);
+
             return Ok(new
             {
                 name = user.Name,
                 email = user.Email,
                 phone = user.PhoneNumber,
                 address = user.Address,
-                newUserUsed = user.NewUserCouponUsed  // 新增字段
+                newUserUsed = user.NewUserCouponUsed,  // 新增字段
+                roles = roles // 返回角色数组
             });
         }
 
