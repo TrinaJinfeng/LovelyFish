@@ -63,10 +63,14 @@ public static class DataSeeder
                 context.SaveChanges();
             }
 
-            // 检查是否已存在
-            bool exists = context.Products.Any(p => p.Title == title && p.CategoryId == category.Id);
-            if (exists) continue;
 
+
+            // 检查是否已存在，如果之前数据库里重复数据没有图片，可能会被 DataSeeder 认为是新产品。
+            bool exists = context.Products
+                  .Any(p => p.Title == title);
+
+            if (exists)
+                continue; // 已存在，跳过
             var product = new Product
             {
                 Title = title,
@@ -90,7 +94,7 @@ public static class DataSeeder
             if (!string.IsNullOrEmpty(pj.Image))
             {
                 var imgUrl = pj.Image.Replace("..\\", "/").Replace("../", "/");
-                product.Images.Add(new ProductImage { Url = imgUrl });
+                product.Images.Add(new ProductImage { FileName = imgUrl });
             }
 
             context.Products.Add(product);

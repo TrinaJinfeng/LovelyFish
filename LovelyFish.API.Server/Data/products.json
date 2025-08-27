@@ -1,12 +1,12 @@
 ﻿[
     {
-      
+
         "name": "Model: wp-350s",
         "price": 55,
         "output": 3000,
         "wattage": 60,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Pumps",
+        "category": "Water Pump",
         "features": "output: 3000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
@@ -16,7 +16,7 @@
         "output": 800,
         "wattage": 15,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Pumps",
+        "category": "Water Pump",
         "features": "output: 880L/hr, wattage: 15W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
@@ -26,37 +26,37 @@
         "output": 1200,
         "wattage": 15,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Pumps",
+        "category": "Water Pump",
         "features": "output: 1200L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
-        
+
         "name": "Model: wp-5500",
         "price": 60,
         "output": 3000,
         "wattage": 60,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Pumps",
+        "category": "Water Pump",
         "features": "output: 3000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
-        
+
         "name": "Model: wp-7200",
         "price": 100,
         "output": 5000,
         "wattage": 60,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Pumps",
+        "category": "Water Pump",
         "features": "output: 5000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
-        
+
         "name": "Model: wp-9800",
         "price": 125,
         "output": 5000,
         "wattage": 90,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Pumps",
+        "category": "Water Pump",
         "features": "output: 5000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
@@ -66,7 +66,7 @@
         "output": 5000,
         "wattage": 160,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Pumps",
+        "category": "Water Pump",
         "features": "output: 1000L/hr~12000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
     },
     {
@@ -76,7 +76,7 @@
         "output": 0,
         "wattage": 100,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Heaters",
+        "category": "Heater",
         "features": "wattage: 100W, suitable for tank below 100L"
     },
     {
@@ -86,7 +86,7 @@
         "output": 0,
         "wattage": 200,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Heaters",
+        "category": "Heater",
         "features": "wattage: 200W, suitable for tank below 120L"
     },
     {
@@ -96,7 +96,7 @@
         "output": 0,
         "wattage": 300,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Heaters",
+        "category": "Heater",
         "features": "wattage: 300W, suitable for tank below 150L"
     },
     {
@@ -106,7 +106,7 @@
         "output": 0,
         "wattage": 500,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Heaters",
+        "category": "Heater",
         "features": "wattage: 500W, suitable for tank below 200L"
     },
     {
@@ -116,7 +116,7 @@
         "output": 1800,
         "wattage": 20,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Filters",
+        "category": "Filter",
         "features": "output: 1800L/hr, wattage: 20W, suitable for tank below 100L"
     },
     {
@@ -126,7 +126,7 @@
         "output": 2000,
         "wattage": 25,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Filters",
+        "category": "Filter",
         "features": "output: 2000L/hr, wattage: 25W, suitable for tank below 150L"
     },
     {
@@ -136,7 +136,7 @@
         "output": 2000,
         "wattage": 25,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Filters",
+        "category": "Filter",
         "features": "output: 2000L/hr, wattage: 25W, suitable for tank below 100L"
     },
     {
@@ -146,7 +146,7 @@
         "output": 2500,
         "wattage": 35,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Filters",
+        "category": "Filter",
         "features": "output: 2500L/hr, wattage: 35W, suitable for tank below 150L"
     },
     {
@@ -156,7 +156,7 @@
         "output": 500,
         "wattage": 10,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Filters",
+        "category": "Filter",
         "features": "output: 500L/hr, wattage: 10W, suitable for tank below 20L"
     },
     {
@@ -166,7 +166,7 @@
         "output": 3,
         "wattage": 8,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Air Pumps",
+        "category": "Air Pump",
         "features": "output: 3.4L/hr per outlet, wattage: 8W, 4outlets"
     },
     {
@@ -176,7 +176,7 @@
         "output": 4,
         "wattage": 12,
         "image": "../assets/uploads/hm.jpg",
-        "category": "Air Pumps",
+        "category": "Air Pump",
         "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
     },
     {

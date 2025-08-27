@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LovelyFish.API.Server.Models
 {
@@ -8,10 +9,11 @@ namespace LovelyFish.API.Server.Models
         public int Id { get; set; }
 
         [Required]
-        public string Url { get; set; }
+        [Column("Url")]
+        public string FileName { get; set; } = null!;
 
         [Required]
         public int ProductId { get; set; }
-        public Product Product { get; set; }
+        public virtual Product Product { get; set; } = null!;
     }
 }

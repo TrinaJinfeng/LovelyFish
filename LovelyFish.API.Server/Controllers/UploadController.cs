@@ -20,7 +20,7 @@ namespace LovelyFish.API.Server.Controllers
             if (files == null || files.Count == 0)
                 return BadRequest("没有文件上传");
 
-            var uploadedUrls = new List<object>();
+            var uploadedFiles = new List<object>();
             var uploadPath = Path.Combine(_env.WebRootPath, "uploads");
 
             if (!Directory.Exists(uploadPath))
@@ -38,12 +38,29 @@ namespace LovelyFish.API.Server.Controllers
                         await file.CopyToAsync(stream);
                     }
 
-                    var url = $"/uploads/{fileName}";
-                    uploadedUrls.Add(new { url });
+                    // 只返回文件名，数据库存这个
+                    uploadedFiles.Add(new { fileName });
                 }
             }
 
-            return Ok(uploadedUrls);
+            return Ok(uploadedFiles);
+        }
+
+        [HttpDelete("delete/{fileName}")]
+        public IActionResult DeleteFile(string fileName)
+        {
+            var uploadPath = Path.Combine(_env.WebRootPath, "uploads", fileName);
+            if (System.IO.File.Exists(uploadPath))
+            {
+                System.IO.File.Delete(uploadPath);
+                return Ok("删除成功");
+            }
+            return NotFound("文件不存在");
         }
     }
 }
+
+
+//上传返回 fileName，数据库存它即可。
+
+//删除接口可以直接传 fileName 删除服务器文件。

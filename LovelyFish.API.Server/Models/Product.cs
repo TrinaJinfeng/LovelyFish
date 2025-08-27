@@ -33,6 +33,6 @@ namespace LovelyFish.API.Server.Models
         public int CategoryId { get; set; }
         public Category Category { get; set; }
 
-        public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
+        public virtual ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
     }
 }

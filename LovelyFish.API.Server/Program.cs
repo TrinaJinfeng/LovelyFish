@@ -37,13 +37,16 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // 仅 HTTPS 发送
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest  //（本地开发 OK，上线要改成 Always）
+        : CookieSecurePolicy.Always;
     options.Cookie.Name = ".LovelyFish.AuthCookie";
 
     // 跨域时 SameSite 必须 None，否则 Cookie 不会带过去
     options.Cookie.SameSite = SameSiteMode.None;
 
     options.ExpireTimeSpan = TimeSpan.FromHours(1);
+
     options.SlidingExpiration = true;
 
     options.LoginPath = "/api/account/login";
