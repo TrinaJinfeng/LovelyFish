@@ -201,7 +201,8 @@ namespace LovelyFish.API.Server.Controllers
             return Ok(new
             {
                 items,
-                totalPages
+                totalPages,
+                totalItems
             });
         }
 

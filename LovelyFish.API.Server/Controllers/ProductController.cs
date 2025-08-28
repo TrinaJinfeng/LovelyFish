@@ -23,33 +23,58 @@ public class ProductController : ControllerBase
         return $"https://localhost:7148/upload/{fileName}";
     }
 
-    // ==================== 获取所有产品 ====================
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts()
-    {
-        var products = await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.Images)
-            .ToListAsync();
-
-        var productDtos = products.Select(p => new ProductDto
+        // ==================== 获取所有产品 ====================
+        [HttpGet]
+        public async Task<IActionResult> GetProducts(
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
         {
-            Id = p.Id,
-            Title = p.Title,
-            Price = p.Price,
-            DiscountPercent = p.DiscountPercent,
-            Stock = p.Stock,
-            Description = p.Description,
-            Features = p.Features.ToList(),
-            CategoryId = p.CategoryId,
-            CategoryTitle = p.Category?.Name,
-            ImageUrls = p.Images.Select(i => i.FileName).ToList(), // 返回文件名给前端
-            MainImageUrl = p.Images.FirstOrDefault() != null ? GetImageUrl(p.Images.First().FileName) : null,
-            IsClearance = p.IsClearance
-        }).ToList();
+            var query = _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.Images)
+                .AsQueryable();
 
-        return Ok(productDtos);
-    }
+            // 搜索
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+                query = query.Where(p => p.Title.ToLower().Contains(lowerSearch));
+            }
+
+            var totalItems = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+            var productsList = await query
+                .OrderBy(p => p.Title)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var productDtos = productsList.Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Title = p.Title,
+                Price = p.Price,
+                DiscountPercent = p.DiscountPercent,
+                Stock = p.Stock,
+                Description = p.Description,
+                Features = p.Features.ToList(),
+                CategoryId = p.CategoryId,
+                CategoryTitle = p.Category?.Name,
+                ImageUrls = p.Images.Select(i => i.FileName).ToList(),
+                MainImageUrl = p.Images.FirstOrDefault() != null ? GetImageUrl(p.Images.First().FileName) : null,
+                IsClearance = p.IsClearance
+            }).ToList();
+
+            return Ok(new
+            {
+                items = productDtos,
+                totalPages,
+                totalItems
+            });
+        }
+    
 
     // ==================== 获取单个产品 ====================
     [HttpGet("{id}")]
