@@ -8,8 +8,14 @@ using System.Threading.Tasks;
 [Route("api/[controller]")]
 public class ContactController : ControllerBase
 {
-    // 请替换成你在 SendGrid 后台生成的 API Key
-    private readonly string SendGridApiKey = "***REMOVED***";
+    // 从环境变量读取 API Key
+    private readonly string SendGridApiKey;
+
+    public ContactController()
+    {
+        SendGridApiKey = Environment.GetEnvironmentVariable("SENDGRID_API_KEY");
+    }
+
 
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] ContactMessage message)

@@ -16,6 +16,8 @@
         // 新增字段
         public string? MainImageUrl { get; set; }
         public bool IsClearance { get; set; }
+
+        public bool IsNewArrival { get; set; }
     }
 
 }

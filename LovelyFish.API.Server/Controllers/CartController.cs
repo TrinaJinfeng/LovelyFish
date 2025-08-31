@@ -63,10 +63,14 @@ namespace LovelyFish.Controllers
             if (userId == null)
                 return Unauthorized();
 
-            return await _context.CartItems
+            // 加载 CartItems，同时 Include Product，再 ThenInclude Product.Images
+            var cartItems = await _context.CartItems
                 .Include(c => c.Product)
+                    .ThenInclude(p => p.Images)  // 关键：加载图片集合
                 .Where(c => c.UserId == userId)
                 .ToListAsync();
+
+            return cartItems;
         }
 
         // POST /api/cart/increment/{id}
@@ -157,12 +161,13 @@ namespace LovelyFish.Controllers
             var phone = user?.PhoneNumber ?? string.Empty;
 
             // 计算原始订单总价
-            decimal originalTotal = cartItems.Sum(c => {
-                var price = c.Product.DiscountPercent > 0 
-                    ? c.Product.Price * (1 - c.Product.DiscountPercent / 100m) 
+            decimal originalTotal = cartItems.Sum(c =>
+            {
+                var price = c.Product.DiscountPercent > 0
+                    ? c.Product.Price * (1 - c.Product.DiscountPercent / 100m)
                     : c.Product.Price;
                 return price * c.Quantity;
-});
+            });
 
             // 计算折扣
             decimal discount = 0;
@@ -252,52 +257,6 @@ namespace LovelyFish.Controllers
             });
         }
     }
-
-     
-
-        
-    
 }
 
-
-
-//把 ApplicationDbContext 替换为 LovelyFishContext，以确保能访问 CartItems 和 Products 表。
-
-//新增了 POST /api/cart 接口，接收 { productId, quantity }，用于添加商品到购物车。
-
-//保留了你原有的增减数量和删除接口。
-
-//你前端调用添加商品接口时，用 POST 发送 productId 和 quantity，即可新增或增加数量。
-
-//Submit order ：
-//新增 Order / OrderItem 模型
-
-//在 DbContext 注册
-
-//创建 POST /api/cart/checkout 接口
-
-//前端点击 Submit Order 按钮调用即可
-
-//改动说明：
-
-//新增了 CheckoutDto，前端可传递 CustomerName 和 ShippingAddress。
-
-//Checkout 接口接收 [FromBody] CheckoutDto dto，然后把姓名和地址写入 Order 表。
-
-//保留原来的购物车增减、更新、删除接口。
-
-//提交订单后清空购物车，并返回 orderId
-
-//前端调用 / cart / estimate 就能拿到 原价、折扣、最终价，不用再自己算。
-
-///cart/checkout 完整生成订单，数据库状态更新。
-
-//新人券 + 满减券逻辑统一在后端计算，保证前端显示与最终订单一致。
-
-//累积消费优惠只能选一个满减券，逻辑和你之前描述一致。
-
-//前端传 items: [{ id, quantity }] 
-
-//后端按 dto.Items 更新购物车数量 
-
-//优惠券 & 累计金额逻辑保持不变 
+     

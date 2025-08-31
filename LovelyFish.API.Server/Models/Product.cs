@@ -19,6 +19,7 @@ namespace LovelyFish.API.Server.Models
 
         public int DiscountPercent { get; set; } = 0;
         public bool IsClearance { get; set; } = false;
+        public bool IsNewArrival { get; set; } = false;
 
         public string FeaturesJson { get; set; } = string.Empty;
 

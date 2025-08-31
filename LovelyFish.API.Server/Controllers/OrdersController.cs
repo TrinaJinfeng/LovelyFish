@@ -34,6 +34,7 @@ namespace LovelyFish.API.Server.Controllers
                     .OrderByDescending(o => o.CreatedAt)
                     .Include(o => o.OrderItems)
                         .ThenInclude(oi => oi.Product)
+                          .ThenInclude(p => p.Images)
                     .ToListAsync();
 
                 var result = orders.Select(o => MapToDto(o)).ToList();
@@ -58,6 +59,7 @@ namespace LovelyFish.API.Server.Controllers
                     .OrderByDescending(o => o.CreatedAt)
                     .Include(o => o.OrderItems)
                         .ThenInclude(oi => oi.Product)
+                        .ThenInclude(p => p.Images) // ✅ 加载 Product.Images
                     .ToListAsync();
 
                 var result = orders.Select(o => MapToDto(o)).ToList();
@@ -135,7 +137,10 @@ namespace LovelyFish.API.Server.Controllers
                     ProductId = oi.ProductId,
                     ProductName = oi.Product != null ? oi.Product.Title : "Deleted Product",
                     Quantity = oi.Quantity,
-                    Price = oi.Price
+                    Price = oi.Price,
+                    MainImageUrl = oi.Product?.Images?.FirstOrDefault()?.FileName != null
+                                    ? $"/uploads/{oi.Product.Images.First().FileName}"
+                                    : "/uploads/placeholder.png"
                 }).ToList()
             };
         }

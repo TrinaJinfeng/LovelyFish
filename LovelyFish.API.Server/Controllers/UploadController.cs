@@ -1,5 +1,4 @@
-﻿// ProductUploadController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace LovelyFish.API.Server.Controllers
 {
@@ -12,55 +11,83 @@ namespace LovelyFish.API.Server.Controllers
         public UploadController(IWebHostEnvironment env)
         {
             _env = env;
+            Console.WriteLine("[UploadController] WebRootPath = " + _env.WebRootPath);
         }
 
         [HttpPost]
         public async Task<IActionResult> UploadFiles([FromForm] List<IFormFile> files)
         {
+
             if (files == null || files.Count == 0)
+            {
+                Console.WriteLine("[UploadFiles] 没有文件上传");
                 return BadRequest("没有文件上传");
+            }
 
             var uploadedFiles = new List<object>();
             var uploadPath = Path.Combine(_env.WebRootPath, "uploads");
 
-            if (!Directory.Exists(uploadPath))
-                Directory.CreateDirectory(uploadPath);
-
-            foreach (var file in files)
+            try
             {
-                if (file.Length > 0)
+                if (!Directory.Exists(uploadPath))
+                    Directory.CreateDirectory(uploadPath);
+
+                foreach (var file in files)
                 {
-                    var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-                    var filePath = Path.Combine(uploadPath, fileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    if (file.Length > 0)
                     {
-                        await file.CopyToAsync(stream);
+                        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                        var filePath = Path.Combine(uploadPath, fileName);
+
+                        try
+                        {
+                            using (var stream = new FileStream(filePath, FileMode.Create))
+                            {
+                                await file.CopyToAsync(stream);
+                            }
+                            uploadedFiles.Add(new { fileName });
+                            Console.WriteLine("[UploadFiles] 保存成功: " + fileName);
+                        }
+                        catch (Exception exFile)
+                        {
+                            Console.WriteLine("[UploadFiles] 保存失败: " + exFile.Message);
+                        }
                     }
-
-                    // 只返回文件名，数据库存这个
-                    uploadedFiles.Add(new { fileName });
                 }
-            }
 
-            return Ok(uploadedFiles);
+                return Ok(uploadedFiles);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[UploadFiles] 上传异常: " + ex.Message);
+                return StatusCode(500, "上传失败");
+            }
         }
 
         [HttpDelete("delete/{fileName}")]
         public IActionResult DeleteFile(string fileName)
         {
-            var uploadPath = Path.Combine(_env.WebRootPath, "uploads", fileName);
-            if (System.IO.File.Exists(uploadPath))
+            try
             {
-                System.IO.File.Delete(uploadPath);
-                return Ok("删除成功");
+                var uploadPath = Path.Combine(_env.WebRootPath, "uploads", fileName);
+
+                if (System.IO.File.Exists(uploadPath))
+                {
+                    System.IO.File.Delete(uploadPath);
+                    Console.WriteLine("[DeleteFile] 删除成功: " + fileName);
+                    return Ok("删除成功");
+                }
+                else
+                {
+                    Console.WriteLine("[DeleteFile] 文件不存在: " + fileName);
+                    return NotFound("文件不存在");
+                }
             }
-            return NotFound("文件不存在");
+            catch (Exception ex)
+            {
+                Console.WriteLine("[DeleteFile] 删除异常: " + ex.Message);
+                return StatusCode(500, "删除失败");
+            }
         }
     }
 }
-
-
-//上传返回 fileName，数据库存它即可。
-
-//删除接口可以直接传 fileName 删除服务器文件。
