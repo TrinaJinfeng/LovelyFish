@@ -4,10 +4,30 @@ using System.Text.Json;
 using LovelyFish.API.Server.Models;
 using Microsoft.AspNetCore.Identity;
 using LovelyFish.API.Server.Data;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container. 控制器
+
+// 1?? 加载 .env 文件（本地开发用）
+
+Env.Load(); // 如果本地没有 .env 也不会报错
+
+
+// 2?? 配置系统读取方式
+//    优先读取环境变量，再读取 appsettings.json
+
+builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+// 3?? 注入 EmailSettings
+var sendGridKey = Environment.GetEnvironmentVariable("SENDGRID_API_KEY");
+builder.Services.Configure<EmailSettings>(options =>
+{
+    options.SendGridApiKey = sendGridKey;
+});
+
+// 4. Add services to the container. 控制器
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -89,26 +109,21 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-// 静态文件（前端 React 构建产物）
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// 路由 & CORS
+
 app.UseRouting();
 app.UseCors("AllowReactApp");
 
 
-// 认证中间件（新增）
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapFallbackToFile("/index.html");
 
-//using (var scope = app.Services.CreateScope())
-//{
-//    DataSeeder.Seed(scope.ServiceProvider);
-//}
 
 using (var scope = app.Services.CreateScope())
 {
