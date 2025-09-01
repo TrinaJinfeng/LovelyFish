@@ -5,29 +5,44 @@ using LovelyFish.API.Server.Models;
 using Microsoft.AspNetCore.Identity;
 using LovelyFish.API.Server.Data;
 using DotNetEnv;
+using LovelyFish.API.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
-// 1?? 加载 .env 文件（本地开发用）
+// 加载 .env 文件（本地开发用）
 
 Env.Load(); // 如果本地没有 .env 也不会报错
 
 
-// 2?? 配置系统读取方式
-//    优先读取环境变量，再读取 appsettings.json
+// 配置系统读取方式
+// 优先读取 appsettings.json 再读取环境变量
 
-builder.Configuration.AddEnvironmentVariables();
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddEnvironmentVariables();
 
-// 3?? 注入 EmailSettings
-var sendGridKey = Environment.GetEnvironmentVariable("SENDGRID_API_KEY");
+//EmailService 里用 IOptions<EmailSettings> 获取配置。
+
+//所有默认值（邮箱、银行信息）都写在 EmailSettings 里。
+
+//控制器只负责调用 SendEmail，不用再写 HttpClient 逻辑。
+
+// 注入 EmailSettings
 builder.Services.Configure<EmailSettings>(options =>
 {
-    options.SendGridApiKey = sendGridKey;
+    options.BrevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
+    options.FromEmail = Environment.GetEnvironmentVariable("FROM_EMAIL");
+    options.FromName = Environment.GetEnvironmentVariable("FROM_NAME");
+    options.BankName = Environment.GetEnvironmentVariable("BANK_NAME");
+    options.AccountNumber = Environment.GetEnvironmentVariable("ACCOUNT_NUMBER");
+    options.AccountName = Environment.GetEnvironmentVariable("ACCOUNT_NAME");
 });
 
-// 4. Add services to the container. 控制器
+// 注入 EmailService
+builder.Services.AddSingleton<EmailService>();
+
+
+//Add services to the container. 控制器
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

@@ -11,6 +11,8 @@ namespace LovelyFish.API.Server.Models
         public string UserId { get; set; } = string.Empty;
 
         public string? CustomerName { get; set; }       // 新增用户姓名
+
+        public string CustomerEmail { get; set; } = string.Empty;
         public string? ShippingAddress { get; set; }     // 新增收货地址
         public string? PhoneNumber { get; set; }         // 联系电话 Profile里的
         public string? ContactPhone { get; set; }     //  下单页面填写的确认电话

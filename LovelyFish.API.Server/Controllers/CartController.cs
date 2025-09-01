@@ -7,6 +7,9 @@ using LovelyFish.API.Server.Dtos;
 using Swashbuckle.AspNetCore.SwaggerUI;
 using LovelyFish.API.Server.Models.Dtos;
 using System.Numerics;
+using Microsoft.Extensions.Options;
+using System.Text;
+using System.Text.Json;
 
 namespace LovelyFish.Controllers
 {
@@ -121,13 +124,11 @@ namespace LovelyFish.Controllers
 
 
         [HttpPost("checkout")]
-        public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto)
+        public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto, [FromServices] IOptions<EmailSettings> emailSettings)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
-                return Unauthorized();
+            if (userId == null) return Unauthorized();
 
-            // 确认 items 存在
             if (dto.Items == null || !dto.Items.Any())
                 return BadRequest("请至少选择一个商品");
 
@@ -138,8 +139,7 @@ namespace LovelyFish.Controllers
                 .Where(c => c.UserId == userId && itemIds.Contains(c.Id))
                 .ToListAsync();
 
-            if (!cartItems.Any())
-                return BadRequest("没有有效的购物车商品");
+            if (!cartItems.Any()) return BadRequest("没有有效的购物车商品");
 
             // 更新数量（以前端传的为准）
             foreach (var dtoItem in dto.Items)
@@ -151,7 +151,6 @@ namespace LovelyFish.Controllers
                 }
             }
 
-            // 获取用户信息
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return NotFound("用户不存在");
 
@@ -169,7 +168,6 @@ namespace LovelyFish.Controllers
                 return price * c.Quantity;
             });
 
-            // 计算折扣
             decimal discount = 0;
 
             // 新人卷（仅一次）
@@ -211,6 +209,7 @@ namespace LovelyFish.Controllers
                 CreatedAt = DateTime.Now,
                 TotalPrice = finalTotal,
                 CustomerName = dto.CustomerName,
+                CustomerEmail = dto.CustomerEmail,
                 ShippingAddress = dto.ShippingAddress,
                 PhoneNumber = phone,        // Profile 电话
                 ContactPhone = dto.Phone,   // 下单页面电话
@@ -224,10 +223,118 @@ namespace LovelyFish.Controllers
                 }).ToList()
             };
 
+
             _context.Orders.Add(order);
             _context.CartItems.RemoveRange(cartItems);
-
             await _context.SaveChangesAsync();
+
+            // ==================== Brevo 邮件通知 ====================
+            try
+            {
+                var brevoApiKey = emailSettings.Value.BrevoApiKey;
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("accept", "application/json");
+                client.DefaultRequestHeaders.Add("api-key", brevoApiKey);
+
+                // =========== 用户邮件内容 ==========
+                string BuildUserHtmlContent(string name)
+                {
+                    var sb = new StringBuilder();
+                    sb.Append($"<p>Hi {name},</p>");
+                    sb.Append("<p>感谢您的订单！请通过以下方式进行转账支付：</p>");
+                    sb.Append("<p><strong>Bank:</strong> " + emailSettings.Value.BankName + "<br>");
+                    sb.Append("<strong>Account Name:</strong> " + emailSettings.Value.AccountName + "<br>");
+                    sb.Append("<strong>Account Number:</strong> " + emailSettings.Value.AccountNumber + "</p>");
+                    sb.Append("<h4>订单明细：</h4><ul>");
+
+                    foreach (var item in cartItems)
+                        sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {item.Product.Price:C}</li>");
+                    sb.Append("</ul>");
+                    sb.Append($"<p>原始总价: {originalTotal:C}</p>");
+                    sb.Append($"<p>折扣: {discount:C}</p>");
+                    sb.Append($"<p><strong>最终付款金额: {finalTotal:C}</strong></p>");
+                    return sb.ToString();
+                }
+
+                string BuildUserTextContent(string name)
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Hi {name},");
+                    sb.AppendLine("感谢您的订单！请通过以下方式进行转账支付：");
+                    sb.AppendLine("Bank: " + emailSettings.Value.BankName);
+                    sb.AppendLine("Account Name: " + emailSettings.Value.AccountName);
+                    sb.AppendLine("Account Number: " + emailSettings.Value.AccountNumber);
+                    sb.AppendLine("订单明细：");
+                    foreach (var item in cartItems)
+                        sb.AppendLine($"{item.Product.Title} × {item.Quantity} - {item.Product.Price:C}");
+                    sb.AppendLine($"原始总价: {originalTotal:C}");
+                    sb.AppendLine($"折扣: {discount:C}");
+                    sb.AppendLine($"最终付款金额: {finalTotal:C}");
+                    return sb.ToString();
+                }
+
+
+                // ========= 管理员邮件内容 ========
+                string BuildAdminHtmlContent(Order order)
+                {
+                    var sb = new StringBuilder();
+                    sb.Append("<h3>📢 新订单提醒</h3>");
+                    sb.Append($"<p><strong>订单号:</strong> {order.Id}</p>");
+                    sb.Append($"<p><strong>客户姓名:</strong> {order.CustomerName}</p>");
+                    sb.Append($"<p><strong>客户邮箱:</strong> {order.CustomerEmail}</p>");
+                    sb.Append("<h4>订单明细：</h4><ul>");
+                    foreach (var item in cartItems)
+                        sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {(item.Product.Price * item.Quantity):C}</li>");
+                    sb.Append("</ul>");
+                    sb.Append($"<p><strong>最终付款金额: {finalTotal:C}</strong></p>");
+                    sb.Append("<p>请尽快在后台查看订单详情。</p>");
+                    return sb.ToString();
+                }
+
+                string BuildAdminTextContent(Order order)
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine("📢 新订单提醒");
+                    sb.AppendLine($"订单号: {order.Id}");
+                    sb.AppendLine($"客户姓名: {order.CustomerName}");
+                    sb.AppendLine($"客户邮箱: {order.CustomerEmail}");
+                    sb.AppendLine("订单明细：");
+                    foreach (var item in cartItems)
+                        sb.AppendLine($"{item.Product.Title} × {item.Quantity} - {(item.Product.Price * item.Quantity):C}");
+                    sb.AppendLine($"最终付款金额: {finalTotal:C}");
+                    sb.AppendLine("请尽快在后台查看订单详情。");
+                    return sb.ToString();
+                }
+
+                // ====== 发送邮件 ======
+                var userPayload = new
+                {
+                    sender = new { email = "lovelyfishaquarium@outlook.com", name = "LovelyFishAquarium" },
+                    to = new[] { new { email = user.Email, name = dto.CustomerName } },
+                    subject = "订单确认 - LovelyFishAquarium",
+                    htmlContent = BuildUserHtmlContent(dto.CustomerName),
+                    textContent = BuildUserTextContent(dto.CustomerName)
+                };
+                var userContent = new StringContent(JsonSerializer.Serialize(userPayload), Encoding.UTF8, "application/json");
+                await client.PostAsync("https://api.brevo.com/v3/smtp/email", userContent);
+
+
+                var adminPayload = new
+                {
+                    sender = new { email = "lovelyfishaquarium@outlook.com", name = "LovelyFishAquarium" },
+                    to = new[] { new { email = "lovelyfishaquarium@outlook.com", name = "管理员" } },
+                    subject = "新订单通知 - LovelyFishAquarium",
+                    htmlContent = BuildAdminHtmlContent(order),
+                    textContent = BuildAdminTextContent(order)
+                };
+                var adminContent = new StringContent(JsonSerializer.Serialize(adminPayload), Encoding.UTF8, "application/json");
+                await client.PostAsync("https://api.brevo.com/v3/smtp/email", adminContent);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[Brevo Email Error] " + ex.Message);
+                // 邮件失败不影响订单保存
+            }
 
             return Ok(new
             {
@@ -259,4 +366,13 @@ namespace LovelyFish.Controllers
     }
 }
 
-     
+
+//用户和管理员同时收到邮件
+
+//邮件显示商品明细、原价、折扣、最终付款金额
+
+//HTML + 纯文本双版本
+
+//银行信息（Bank + Account Name + Account Number）可配置化
+
+//邮件发送失败不影响订单保存

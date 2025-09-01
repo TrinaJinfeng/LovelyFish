@@ -9,6 +9,7 @@ namespace LovelyFish.API.Server.Dtos
         public string Phone { get; set; } = string.Empty; //  ConfirmOrderPage 填的电话
         //public Dictionary<int, int>? Quantities { get; set; }
         //public List<int> CartItemIds { get; set; } = new List<int>();
+        public string CustomerEmail { get; set; } = string.Empty;
         public List<CheckoutItemDto> Items { get; set; } = new List<CheckoutItemDto>();
 
         // 前端选择使用哪些优惠

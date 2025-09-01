@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace LovelyFish.API.Server.Controllers
 {
@@ -126,7 +128,7 @@ namespace LovelyFish.API.Server.Controllers
 
         // POST api/account/forgot-password
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest model)
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest model, [FromServices] IOptions<EmailSettings> emailSettings)
         {
             if (string.IsNullOrWhiteSpace(model.Email))
                 return BadRequest(new { message = "Email is required" });
@@ -139,12 +141,57 @@ namespace LovelyFish.API.Server.Controllers
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var resetLink = $"http://localhost:3000/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
+            var resetLink = $"{emailSettings.Value.FrontendBaseUrl}/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
 
-            // TODO: 用邮件服务发送 resetLink 给用户
-            Console.WriteLine($"发送密码重置链接: {resetLink}");
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("accept", "application/json");
+                client.DefaultRequestHeaders.Add("api-key", emailSettings.Value.BrevoApiKey);
+
+                var htmlContent = $@"
+                                    <p>Hi {user.Name ?? user.Email},</p>
+                                    <p>请点击以下链接重置密码:</p>
+                                    <p><a href='{resetLink}' target='_blank'>重置密码</a></p>
+                                    <p>如果您没有请求重置密码，请忽略此邮件。</p>
+";
+
+                // 纯文本邮件
+                var textContent = $@"
+                                    Hi {user.Name ?? user.Email},
+
+                                    请点击以下链接重置密码:
+                                    {resetLink}
+
+                                    如果您没有请求重置密码，请忽略此邮件。
+                                    ";
+
+                Console.WriteLine("===== HTML 内容 =====");
+                Console.WriteLine(htmlContent);
+                Console.WriteLine("====================");
+
+                var payload = new
+                {
+                    sender = new { email = emailSettings.Value.SenderEmail, name = emailSettings.Value.SenderName },
+                    to = new[] { new { email = model.Email, name = user.Name ?? model.Email } },
+                    subject = "密码重置 - LovelyFishAquarium",
+                    htmlContent,
+                    textContent
+                };
+
+
+
+                var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                await client.PostAsync("https://api.brevo.com/v3/smtp/email", content);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[Brevo Email Error] " + ex.Message);
+                // 邮件发送失败也不影响返回
+            }
 
             return Ok(new { message = "If that email exists, a reset link has been sent" });
+        
         }
 
         // POST api/account/reset-password
@@ -253,59 +300,3 @@ namespace LovelyFish.API.Server.Controllers
     }
 }
 
-//UserManager 用来管理用户创建、查找等。
-
-//SignInManager 处理登录逻辑。
-
-//注册接口：接收邮箱和密码，创建用户。
-
-//登录接口：验证邮箱密码，返回登录结果。
-
-//新增 Logout 接口
-
-//HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme) 会清理 .AspNetCore.Identity.Application Cookie，让用户真正退出。
-
-//加了 [Authorize]，防止未登录时调用浪费资源。
-
-//Login 中 isPersistent: false
-
-//不让 Cookie 永久保存（关闭浏览器就失效）。
-
-//如果你需要“记住我”功能，可以用 true 并在前端给用户选项。
-
-//用户在 忘记密码页面 输入邮箱。
-
-//后端调用 UserManager.GeneratePasswordResetTokenAsync(user) 生成一次性 Token。
-
-//生成带有 email 和 token 的链接发给用户邮箱。
-
-//用户点击链接到 重置密码页面，前端从 URL 中读取 email 和 token，输入新密码后提交到 /reset-password。
-
-//后端用 UserManager.ResetPasswordAsync 验证 Token 并更新密码。
-
-//开发调试说明
-//🔹 测试流程（无邮件服务）
-//在 忘记密码 页面输入已注册邮箱 → 发送 /forgot-password
-
-//后端控制台会输出一个 reset link，类似：
-
-//perl
-//复制
-//编辑
-//https://localhost:3000/reset-password?email=trina@126.com&token=XYZ...
-//打开浏览器访问这个地址，前端页面会自动把 email/token 填入表单（你可以在 ResetPasswordPage 加个 useEffect 自动读取 query 参数）。
-
-//输入新密码 → 调用 /reset-password → 返回成功。
-//     邮件发送（生产）
-//后续你只需要在：
-
-//csharp
-//复制
-//编辑
-//Console.WriteLine($"Reset link (dev only): {resetLink}");
-//位置换成真正的 SMTP 邮件发送逻辑 就行，比如：
-
-//csharp
-//复制
-//编辑
-//await _emailSender.SendEmailAsync(model.Email, "Reset your password", $"Click here: {resetLink}");

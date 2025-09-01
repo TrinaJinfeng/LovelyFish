@@ -5,6 +5,8 @@ using LovelyFish.API.Server.Data; // <- 包含 LovelyFishContext
 using Microsoft.AspNetCore.Authorization;
 using LovelyFish.API.Server.Models.Dtos;
 using LovelyFish.API.Data;
+using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace LovelyFish.API.Server.Controllers
 {
@@ -71,7 +73,7 @@ namespace LovelyFish.API.Server.Controllers
         // POST api/admin/forgot-password
         [AllowAnonymous]
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword(AdminForgotPasswordRequest model)
+        public async Task<IActionResult> ForgotPassword(AdminForgotPasswordRequest model, [FromServices] IOptions<EmailSettings> emailSettings)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
@@ -81,8 +83,48 @@ namespace LovelyFish.API.Server.Controllers
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-            // 这里实际情况需要发邮件，你可以先返回 token 方便测试
-            return Ok(new { message = "Password reset token generated", token });
+            // 生成重置链接
+            var resetLink = $"{emailSettings.Value.FrontendBaseUrl}/admin/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
+
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("accept", "application/json");
+                client.DefaultRequestHeaders.Add("api-key", emailSettings.Value.BrevoApiKey);
+
+                var htmlContent = $"<p>Hi {user.Name ?? user.Email},</p>" +
+                                  $"<p>请点击以下链接重置管理员密码:</p>" +
+                                  $"<p><a href='{resetLink}'>重置密码</a></p>" +
+                                  "<p>如果您没有请求重置密码，请忽略此邮件。</p>";
+
+                var textContent = $"Hi {user.Name ?? user.Email},\n\n" +
+                                  $"请点击以下链接重置管理员密码:\n{resetLink}\n\n" +
+                                  "如果您没有请求重置密码，请忽略此邮件。";
+
+                Console.WriteLine("===== HTML 内容 =====");
+                Console.WriteLine(htmlContent);
+                Console.WriteLine("====================");
+
+                var payload = new
+                {
+                    sender = new { email = emailSettings.Value.SenderEmail, name = emailSettings.Value.SenderName },
+                    to = new[] { new { email = model.Email, name = user.Name ?? model.Email } },
+                    subject = "管理员密码重置 - LovelyFishAquarium",
+                    htmlContent,
+                    textContent
+                };
+
+                var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                await client.PostAsync("https://api.brevo.com/v3/smtp/email", content);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[Brevo Email Error] " + ex.Message);
+                // 邮件发送失败也不影响返回
+            }
+
+            return Ok(new { message = "If that email exists, a reset link has been sent" });
+        
         }
 
         // POST api/admin/reset-password
