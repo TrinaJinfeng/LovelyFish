@@ -18,26 +18,27 @@ namespace LovelyFish.API.Server.Controllers
             _context = context;
         }
 
-        // ==================== 普通用户 ====================
+        // ==================== Regular User ====================
         // GET api/orders/my
+        // Returns orders for the currently logged-in user
         [HttpGet("my")]
         [Authorize]
         public async Task<ActionResult<IEnumerable<OrderDto>>> GetMyOrders()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get logged-in user ID
             if (userId == null) return Unauthorized();
 
             try
             {
                 var orders = await _context.Orders
-                    .Where(o => o.UserId == userId)
-                    .OrderByDescending(o => o.CreatedAt)
-                    .Include(o => o.OrderItems)
-                        .ThenInclude(oi => oi.Product)
-                          .ThenInclude(p => p.Images)
+                    .Where(o => o.UserId == userId) // Filter orders by current user
+                    .OrderByDescending(o => o.CreatedAt) // Latest orders first
+                    .Include(o => o.OrderItems) // Include related order items
+                        .ThenInclude(oi => oi.Product) // Include product details
+                          .ThenInclude(p => p.Images) // Include product images
                     .ToListAsync();
 
-                var result = orders.Select(o => MapToDto(o)).ToList();
+                var result = orders.Select(o => MapToDto(o)).ToList(); // Map entities to DTOs
                 return Ok(result);
             }
             catch (Exception ex)
@@ -47,8 +48,9 @@ namespace LovelyFish.API.Server.Controllers
             }
         }
 
-        // ==================== 管理员 ====================
+        // ==================== Admin ====================
         // GET api/orders/admin
+        // Returns all orders (admin only)
         [HttpGet("admin")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<OrderDto>>> GetAllOrders()
@@ -56,13 +58,13 @@ namespace LovelyFish.API.Server.Controllers
             try
             {
                 var orders = await _context.Orders
-                    .OrderByDescending(o => o.CreatedAt)
-                    .Include(o => o.OrderItems)
-                        .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p.Images) // ✅ 加载 Product.Images
+                    .OrderByDescending(o => o.CreatedAt) // Latest orders first
+                    .Include(o => o.OrderItems) // Include related order items
+                        .ThenInclude(oi => oi.Product) // Include product details
+                        .ThenInclude(p => p.Images) // Include product images
                     .ToListAsync();
 
-                var result = orders.Select(o => MapToDto(o)).ToList();
+                var result = orders.Select(o => MapToDto(o)).ToList(); // Map entities to DTOs
                 return Ok(result);
             }
             catch (Exception ex)
@@ -73,6 +75,7 @@ namespace LovelyFish.API.Server.Controllers
         }
 
         // PUT api/orders/{orderId}/status
+        // Admin updates order status
         [HttpPut("{orderId}/status")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateOrderStatus(int orderId, [FromBody] string status)
@@ -82,7 +85,7 @@ namespace LovelyFish.API.Server.Controllers
                 var order = await _context.Orders.FindAsync(orderId);
                 if (order == null) return NotFound();
 
-                order.Status = status ?? order.Status;
+                order.Status = status ?? order.Status; // Update status if provided
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Order status updated successfully" });
             }
@@ -94,6 +97,7 @@ namespace LovelyFish.API.Server.Controllers
         }
 
         // PUT api/orders/{orderId}/shipping
+        // Admin updates shipping info (courier + tracking number)
         [HttpPut("{orderId}/shipping")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateShippingInfo(int orderId, [FromBody] ShippingUpdateDto dto)
@@ -103,8 +107,8 @@ namespace LovelyFish.API.Server.Controllers
                 var order = await _context.Orders.FindAsync(orderId);
                 if (order == null) return NotFound();
 
-                order.Courier = dto.Courier ?? order.Courier;
-                order.TrackingNumber = dto.TrackingNumber ?? order.TrackingNumber;
+                order.Courier = dto.Courier ?? order.Courier; // Update courier if provided
+                order.TrackingNumber = dto.TrackingNumber ?? order.TrackingNumber; // Update tracking if provided
 
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Shipping info updated successfully" });
@@ -116,7 +120,8 @@ namespace LovelyFish.API.Server.Controllers
             }
         }
 
-        // ==================== 私有方法 ====================
+        // ==================== Private Methods ====================
+        // Map Order entity to DTO to unify API response format
         private OrderDto MapToDto(Models.Order o)
         {
             return new OrderDto
@@ -135,26 +140,13 @@ namespace LovelyFish.API.Server.Controllers
                 {
                     Id = oi.Id,
                     ProductId = oi.ProductId,
-                    ProductName = oi.Product != null ? oi.Product.Title : "Deleted Product",
+                    ProductName = oi.Product != null ? oi.Product.Title : "Deleted Product", // Handle deleted products
                     Quantity = oi.Quantity,
                     Price = oi.Price,
-                    MainImageUrl = oi.Product?.Images?.FirstOrDefault()?.FileName != null
-                                    ? $"/uploads/{oi.Product.Images.First().FileName}"
-                                    : "/uploads/placeholder.png"
+                    MainImageUrl = oi.Product?.Images?.FirstOrDefault()?.FileName
+                                ?? "https://lovelyfishstorage2025.blob.core.windows.net/images/placeholder.png"
                 }).ToList()
             };
         }
     }
-
 }
-
-
-//普通用户只能 GET /orders/my，管理员才能 GET /orders/admin。
-
-//管理员更新状态 PUT /orders/{id}/ status，更新快递信息 PUT /orders/{id}/ shipping。
-
-//MapToDto 方法统一映射，避免重复代码。
-
-//DTO ShippingUpdateDto 放在控制器文件末尾，前端 OrdersAdminPage.jsx 可以直接对接。
-
-  

@@ -2,18 +2,21 @@
 
 namespace LovelyFish.API.Server.Models
 {
-   
-  public class ApplicationUser : IdentityUser
-        {
-        // 用户真实姓名
+    // Custom ApplicationUser extending IdentityUser
+    public class ApplicationUser : IdentityUser
+    {
+        // User's real/full name
         public string? Name { get; set; }
+
+        // User's address
         public string? Address { get; set; }
 
-        // PhoneNumber 已经在 IdentityUser 里有了，不需要再加
+        // PhoneNumber is already included in IdentityUser
 
-        // 新增字段
-        public decimal AccumulatedAmount { get; set; } = 0;   // 累积消费
-        public bool NewUserCouponUsed { get; set; } = false;  // 新用户5刀优惠是否已用
+        // Total accumulated spending by the user
+        public decimal AccumulatedAmount { get; set; } = 0;
+
+        // Indicates whether the new user $5 coupon has been used
+        public bool NewUserCouponUsed { get; set; } = false;
     }
 }
-

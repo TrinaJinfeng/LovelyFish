@@ -12,6 +12,7 @@ namespace LovelyFish.API.Server.Services
         private readonly EmailSettings _settings;
         private readonly HttpClient _httpClient;
 
+        // Constructor injects EmailSettings and initializes HttpClient
         public EmailService(IOptions<EmailSettings> options)
         {
             _settings = options.Value;
@@ -21,23 +22,23 @@ namespace LovelyFish.API.Server.Services
             _httpClient.DefaultRequestHeaders.Add("api-key", _settings.BrevoApiKey);
         }
 
-        public EmailSettings Settings => _settings; // 提供外部访问配置的属性
+        public EmailSettings Settings => _settings; // Expose settings externally
 
         /// <summary>
-        /// 发送邮件
+        /// Sends an email using Brevo (Sendinblue) SMTP API
         /// </summary>
-        /// <param name="toEmail">收件人邮箱</param>
-        /// <param name="toName">收件人姓名</param>
-        /// <param name="subject">邮件主题</param>
-        /// <param name="htmlContent">HTML 内容</param>
-        /// <param name="textContent">纯文本内容（可选）</param>
-        /// <returns>发送成功返回 true，否则 false</returns>
+        /// <param name="toEmail">Recipient email</param>
+        /// <param name="toName">Recipient name</param>
+        /// <param name="subject">Email subject</param>
+        /// <param name="htmlContent">HTML content</param>
+        /// <param name="textContent">Plain text content (optional)</param>
+        /// <returns>True if email sent successfully, otherwise false</returns>
         public async Task<bool> SendEmail(string toEmail, string toName, string subject, string htmlContent, string textContent = null)
         {
             if (string.IsNullOrEmpty(_settings.BrevoApiKey))
                 return false;
 
-            textContent ??= htmlContent; // 如果没传纯文本，就用 HTML
+            textContent ??= htmlContent; // Use HTML as fallback for plain text
 
             try
             {
@@ -62,7 +63,7 @@ namespace LovelyFish.API.Server.Services
         }
 
         /// <summary>
-        /// 发送给管理员的邮件
+        /// Sends emails to admin email defined in EmailSettings
         /// </summary>
         public async Task<bool> SendToAdmin(string subject, string htmlContent, string textContent = null)
         {

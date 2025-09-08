@@ -4,41 +4,51 @@ using LovelyFish.API.Server.Models;
 
 public static class DataSeeder
 {
+    // Seed initial data into the database
     public static void Seed(IServiceProvider services)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<LovelyFishContext>();
 
-        // 确保数据库存在
+        // Ensure database is created
         context.Database.EnsureCreated();
 
-        // JSON 文件路径
+        //// Only import Json when Products is null
+        //if (context.Products.Any())
+        //{
+        //    Console.WriteLine("[DataSeeder] Products table not empty, skipping JSON import.");
+        //    return;
+        //}
+
+        // JSON file path
         var filePath = Path.Combine(AppContext.BaseDirectory, "Data", "products.json");
-        Console.WriteLine($"[DataSeeder] 尝试读取: {filePath}");
+        Console.WriteLine($"[DataSeeder] Trying to read: {filePath}");
 
         if (!File.Exists(filePath))
         {
-            Console.WriteLine($"[DataSeeder] 文件未找到: {filePath}");
+            Console.WriteLine($"[DataSeeder] File not found: {filePath}");
             return;
         }
 
+        // Read JSON content
         var json = File.ReadAllText(filePath);
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         List<ProductJson>? products;
         try
         {
+            // Deserialize JSON to list of ProductJson
             products = JsonSerializer.Deserialize<List<ProductJson>>(json, options);
         }
         catch (JsonException ex)
         {
-            Console.WriteLine($"[DataSeeder] JSON 解析错误: {ex.Message}");
+            Console.WriteLine($"[DataSeeder] JSON parsing error: {ex.Message}");
             return;
         }
 
         if (products == null || products.Count == 0)
         {
-            Console.WriteLine("[DataSeeder] 没有数据可插入。");
+            Console.WriteLine("[DataSeeder] No data to insert.");
             return;
         }
 
@@ -46,14 +56,14 @@ public static class DataSeeder
 
         foreach (var pj in products)
         {
-            // 默认字段
+            // Default fields
             var title = pj.Name ?? string.Empty;
             var price = Convert.ToDecimal(pj.Price);
             var description = pj.Features ?? string.Empty;
             var discountPercent = pj.DiscountPercent ?? 0;
             var isClearance = pj.IsClearance ?? false;
 
-            // 找到或创建分类
+            // Find or create category
             var categoryName = pj.Category ?? "Uncategorized";
             var category = context.Categories.FirstOrDefault(c => c.Name == categoryName);
             if (category == null)
@@ -63,14 +73,11 @@ public static class DataSeeder
                 context.SaveChanges();
             }
 
-
-
-            // 检查是否已存在，如果之前数据库里重复数据没有图片，可能会被 DataSeeder 认为是新产品。
-            bool exists = context.Products
-                  .Any(p => p.Title == title);
-
+            // Skip if product already exists (by title)
+            bool exists = context.Products.Any(p => p.Title == title);
             if (exists)
-                continue; // 已存在，跳过
+                continue;
+
             var product = new Product
             {
                 Title = title,
@@ -82,7 +89,7 @@ public static class DataSeeder
                 Stock = 10
             };
 
-            // 处理 Features
+            // Handle Features
             if (!string.IsNullOrEmpty(pj.Features))
             {
                 product.Features = pj.Features.Split(',')
@@ -90,7 +97,7 @@ public static class DataSeeder
                                              .ToArray();
             }
 
-            // 处理主图
+            // Handle main image
             if (!string.IsNullOrEmpty(pj.Image))
             {
                 var imgUrl = pj.Image.Replace("..\\", "/").Replace("../", "/");
@@ -101,18 +108,19 @@ public static class DataSeeder
             insertCount++;
         }
 
+        // Save changes if any products were inserted
         if (insertCount > 0)
         {
             context.SaveChanges();
-            Console.WriteLine($"[DataSeeder] 成功插入 {insertCount} 条产品数据。");
+            Console.WriteLine($"[DataSeeder] Successfully inserted {insertCount} product(s).");
         }
         else
         {
-            Console.WriteLine("[DataSeeder] 没有新产品需要插入。");
+            Console.WriteLine("[DataSeeder] No new products to insert.");
         }
     }
 
-    // JSON 临时映射类
+    // Temporary JSON mapping class
     private class ProductJson
     {
         public string Name { get; set; }

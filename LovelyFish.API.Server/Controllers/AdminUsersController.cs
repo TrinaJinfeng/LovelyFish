@@ -44,7 +44,7 @@ namespace LovelyFish.API.Server.Controllers
                 .Take(pageSize)
                 .ToListAsync();
 
-            // 获取所有订单到内存，避免 EF Core 子查询报错
+            // Load all orders into memory to avoid EF Core subquery issues
             var userIds = usersList.Select(u => u.Id).ToList();
             var orders = await _context.Orders
                 .Where(o => userIds.Contains(o.UserId))
@@ -69,7 +69,7 @@ namespace LovelyFish.API.Server.Controllers
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
 
-            // active 为 true 表示启用，false 表示禁用
+            // active = true means enable; false means disable
             user.LockoutEnd = dto.Active ? null : DateTimeOffset.MaxValue;
             await _userManager.UpdateAsync(user);
 

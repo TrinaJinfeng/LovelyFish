@@ -54,40 +54,42 @@ namespace LovelyFish.API.Server.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            // isPersistent: false 表示不记住登录，关闭浏览器 Cookie 失效
+
+            // False means the login session will not persist after closing the browser
             var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, false, false);
 
             if (!result.Succeeded)
             {
-                return Unauthorized(new { message = "Wrong Username or password!" });
+                return Unauthorized(new { message = "Invalid username or password" });
             }
 
             return Ok(new { message = "Login successful" });
         }
+
         // POST api/account/logout
         [HttpPost("logout")]
-        [Authorize] // 必须登录才能调用
+        [Authorize] // Must be logged in to call
         public async Task<IActionResult> Logout()
         {
-            // 清除认证 Cookie
+            // Clear authentication cookie
             await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
 
-            // 也可以用 SignInManager 的登出方法（等效）
+            // Alternatively, use SignInManager’s SignOut method (equivalent)
             // await _signInManager.SignOutAsync();
 
-            return Ok(new { message = "Logged out" });
+            return Ok(new { message = "Logged out successfully" });
         }
 
-        // POST api/account/me
+        // GET api/account/me
         [HttpGet("me")]
-        [Authorize] // 必须是已登录用户才能调用
+        [Authorize] // Must be an authenticated user
         public async Task<IActionResult> Me()
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
                 return Unauthorized();
 
-            // 这里获取角色列表
+            // Retrieve assigned roles
             var roles = await _userManager.GetRolesAsync(user);
 
             return Ok(new
@@ -96,8 +98,8 @@ namespace LovelyFish.API.Server.Controllers
                 email = user.Email,
                 phone = user.PhoneNumber,
                 address = user.Address,
-                newUserUsed = user.NewUserCouponUsed,  // 新增字段
-                roles = roles // 返回角色数组
+                newUserUsed = user.NewUserCouponUsed,//Check user is new or not
+                roles = roles // Return roles array
             });
         }
 
@@ -123,7 +125,7 @@ namespace LovelyFish.API.Server.Controllers
                 return BadRequest(result.Errors);
             }
 
-            return Ok(new { message = "资料更新成功" });
+            return Ok(new { message = "Profile updated successfully" });
         }
 
         // POST api/account/forgot-password
@@ -136,7 +138,7 @@ namespace LovelyFish.API.Server.Controllers
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
             {
-                // 即使用户不存在也返回 OK，避免暴露账号信息
+                // Return OK even if user does not exist, to avoid account enumeration
                 return Ok(new { message = "If that email exists, a reset link has been sent" });
             }
 
@@ -151,22 +153,21 @@ namespace LovelyFish.API.Server.Controllers
 
                 var htmlContent = $@"
                                     <p>Hi {user.Name ?? user.Email},</p>
-                                    <p>请点击以下链接重置密码:</p>
-                                    <p><a href='{resetLink}' target='_blank'>重置密码</a></p>
-                                    <p>如果您没有请求重置密码，请忽略此邮件。</p>
+                                    <p>Please click the following link to reset your password:</p>
+                                    <p><a href='{resetLink}' target='_blank'>Reset Password</a></p>
+                                    <p>If you did not request a password reset, please ignore this email.</p>
 ";
 
-                // 纯文本邮件
                 var textContent = $@"
                                     Hi {user.Name ?? user.Email},
 
-                                    请点击以下链接重置密码:
+                                    Please click the following link to reset your password:
                                     {resetLink}
 
-                                    如果您没有请求重置密码，请忽略此邮件。
+                                    If you did not request a password reset, please ignore this email.
                                     ";
 
-                Console.WriteLine("===== HTML 内容 =====");
+                Console.WriteLine("===== HTML Content =====");
                 Console.WriteLine(htmlContent);
                 Console.WriteLine("====================");
 
@@ -174,12 +175,10 @@ namespace LovelyFish.API.Server.Controllers
                 {
                     sender = new { email = emailSettings.Value.SenderEmail, name = emailSettings.Value.SenderName },
                     to = new[] { new { email = model.Email, name = user.Name ?? model.Email } },
-                    subject = "密码重置 - LovelyFishAquarium",
+                    subject = "Password Reset - LovelyFishAquarium",
                     htmlContent,
                     textContent
                 };
-
-
 
                 var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
                 await client.PostAsync("https://api.brevo.com/v3/smtp/email", content);
@@ -187,11 +186,10 @@ namespace LovelyFish.API.Server.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine("[Brevo Email Error] " + ex.Message);
-                // 邮件发送失败也不影响返回
+                // Even if email fails, do not expose details to client
             }
 
             return Ok(new { message = "If that email exists, a reset link has been sent" });
-        
         }
 
         // POST api/account/reset-password
@@ -223,11 +221,11 @@ namespace LovelyFish.API.Server.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // 新密码复杂度校验
+            // Validate new password complexity
             var passwordRegex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$");
             if (!passwordRegex.IsMatch(model.NewPassword))
             {
-                return BadRequest(new { message = "新密码必须至少8位，包含大写字母、小写字母、数字和特殊字符。" });
+                return BadRequest(new { message = "New password must be at least 8 characters long and include uppercase, lowercase, number, and special character." });
             }
 
             var user = await _userManager.GetUserAsync(User);
@@ -237,7 +235,7 @@ namespace LovelyFish.API.Server.Controllers
             var isOldPasswordValid = await _userManager.CheckPasswordAsync(user, model.OldPassword);
             if (!isOldPasswordValid)
             {
-                return BadRequest(new { message = "当前密码不正确。" });
+                return BadRequest(new { message = "Current password is incorrect." });
             }
 
             var result = await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
@@ -246,13 +244,11 @@ namespace LovelyFish.API.Server.Controllers
                 return BadRequest(result.Errors);
             }
 
-            return Ok(new { message = "密码修改成功。" });
+            return Ok(new { message = "Password changed successfully." });
         }
-
     }
 
-
-    // 请求模型
+    // Request models
     public class RegisterRequest
     {
         public string Email { get; set; } = string.Empty;
@@ -278,7 +274,6 @@ namespace LovelyFish.API.Server.Controllers
     }
 
     public class ChangePasswordRequest
-    //新增了 [HttpPost("change-password")] 接口，带 [Authorize] 保护，必须登录用户才能调用。
     {
         [Required]
         public string OldPassword { get; set; } = string.Empty;
@@ -299,4 +294,3 @@ namespace LovelyFish.API.Server.Controllers
         public string Address { get; set; } = string.Empty;
     }
 }
-

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using LovelyFish.API.Server.Models; // ApplicationUser
-using LovelyFish.API.Server.Data; // <- 包含 LovelyFishContext
+using LovelyFish.API.Server.Data; // <- includes LovelyFishContext
 using Microsoft.AspNetCore.Authorization;
 using LovelyFish.API.Server.Models.Dtos;
 using LovelyFish.API.Data;
@@ -12,9 +12,10 @@ namespace LovelyFish.API.Server.Controllers
 {
     [ApiController]
     [Route("api/admin")]
-    [Authorize(Roles = "Admin")] 
-    // 整个控制器 [Authorize(Roles = "Admin")]，只给登录、忘记密码、重置密码用 [AllowAnonymous]。
-    // 避免后续新增接口忘记加 [Authorize]，统一管理安全策略。
+    [Authorize(Roles = "Admin")]
+    // Entire controller is restricted to Admin role. 
+    // Only login, forgot-password, and reset-password are marked with [AllowAnonymous]. 
+    // This ensures all other actions are protected by default and avoids forgetting [Authorize] on new endpoints.
     public class AdminController : ControllerBase
     {
         private readonly LovelyFishContext _context;
@@ -83,7 +84,7 @@ namespace LovelyFish.API.Server.Controllers
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-            // 生成重置链接
+            // Generate reset link
             var resetLink = $"{emailSettings.Value.FrontendBaseUrl}/admin/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
 
             try
@@ -93,23 +94,23 @@ namespace LovelyFish.API.Server.Controllers
                 client.DefaultRequestHeaders.Add("api-key", emailSettings.Value.BrevoApiKey);
 
                 var htmlContent = $"<p>Hi {user.Name ?? user.Email},</p>" +
-                                  $"<p>请点击以下链接重置管理员密码:</p>" +
-                                  $"<p><a href='{resetLink}'>重置密码</a></p>" +
-                                  "<p>如果您没有请求重置密码，请忽略此邮件。</p>";
+                                  $"<p>Please click the link below to reset your admin password:</p>" +
+                                  $"<p><a href='{resetLink}'>Reset Password</a></p>" +
+                                  "<p>If you did not request a password reset, please ignore this email.</p>";
 
                 var textContent = $"Hi {user.Name ?? user.Email},\n\n" +
-                                  $"请点击以下链接重置管理员密码:\n{resetLink}\n\n" +
-                                  "如果您没有请求重置密码，请忽略此邮件。";
+                                  $"Please click the link below to reset your admin password:\n{resetLink}\n\n" +
+                                  "If you did not request a password reset, please ignore this email.";
 
-                Console.WriteLine("===== HTML 内容 =====");
+                Console.WriteLine("===== HTML Content =====");
                 Console.WriteLine(htmlContent);
-                Console.WriteLine("====================");
+                Console.WriteLine("=======================");
 
                 var payload = new
                 {
                     sender = new { email = emailSettings.Value.SenderEmail, name = emailSettings.Value.SenderName },
                     to = new[] { new { email = model.Email, name = user.Name ?? model.Email } },
-                    subject = "管理员密码重置 - LovelyFishAquarium",
+                    subject = "Admin Password Reset - LovelyFishAquarium",
                     htmlContent,
                     textContent
                 };
@@ -120,11 +121,11 @@ namespace LovelyFish.API.Server.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine("[Brevo Email Error] " + ex.Message);
-                // 邮件发送失败也不影响返回
+                // Email failure does not affect the response
             }
 
             return Ok(new { message = "If that email exists, a reset link has been sent" });
-        
+
         }
 
         // POST api/admin/reset-password
@@ -169,7 +170,7 @@ namespace LovelyFish.API.Server.Controllers
                 username = u.UserName,
                 email = u.Email,
                 active = u.LockoutEnd == null || u.LockoutEnd <= DateTimeOffset.Now,
-                orderCount = 0 // TODO: 这里你可以查订单表统计
+                orderCount = 0 // TODO: Here you could query the order table to count
             }).ToList();
 
             return Ok(users);
@@ -184,28 +185,28 @@ namespace LovelyFish.API.Server.Controllers
 
             if (active)
             {
-                user.LockoutEnd = null; // 启用
+                user.LockoutEnd = null; // enable
             }
             else
             {
-                user.LockoutEnd = DateTimeOffset.MaxValue; // 禁用
+                user.LockoutEnd = DateTimeOffset.MaxValue; // disable
             }
 
             await _userManager.UpdateAsync(user);
             return Ok();
         }
 
-        // GET api/admin/orders 后台订单管理接口
+        // GET api/admin/orders - order management in admin panel
         [HttpGet("orders")]
         public IActionResult GetOrders([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            // 从数据库中查询订单
+            // Query orders from database
             var query = _context.Orders.AsQueryable();
 
-            // 搜索客户姓名或电话
+            // Search by customer name or phone
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower(); // 用户输入的小写版
+                var lowerSearch = search.ToLower();
 
                 query = query.Where(o =>
                     (o.CustomerName != null && o.CustomerName.ToLower().Contains(lowerSearch)) ||
@@ -214,14 +215,13 @@ namespace LovelyFish.API.Server.Controllers
                 );
             }
 
-            // 按创建时间倒序
+            // Order by creation time (descending)
             query = query.OrderByDescending(o => o.CreatedAt);
 
-            // 计算分页信息
+            // Pagination
             var totalItems = query.Count();
             var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
-            // 取当前页数据
             var items = query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -248,7 +248,7 @@ namespace LovelyFish.API.Server.Controllers
             });
         }
 
-        // View Details
+        // GET api/admin/orders/{id} - view order details
         [HttpGet("orders/{id}")]
         public IActionResult GetOrderById(int id)
         {

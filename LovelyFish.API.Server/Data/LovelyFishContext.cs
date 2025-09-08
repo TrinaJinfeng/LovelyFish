@@ -4,39 +4,46 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace LovelyFish.API.Data
 {
+    // DbContext for the application, inherits from IdentityDbContext to include ASP.NET Identity
     public class LovelyFishContext : IdentityDbContext<ApplicationUser>
     {
         public LovelyFishContext(DbContextOptions<LovelyFishContext> options)
-        : base(options) { }
+            : base(options) { }
 
+        // Products table
         public DbSet<Product> Products { get; set; }
-        public DbSet<ProductImage> ProductImages { get; set; }  // 新增
-        public DbSet<Category> Categories { get; set; }         // 新增
 
-        public DbSet<CartItem> CartItems { get; set; }  // 新增购物车项表
+        // Product images table
+        public DbSet<ProductImage> ProductImages { get; set; }
 
+        // Categories table
+        public DbSet<Category> Categories { get; set; }
+
+        // Shopping cart items table
+        public DbSet<CartItem> CartItems { get; set; }
+
+        // Orders table
         public DbSet<Order> Orders { get; set; }
-        public DbSet<OrderItem> OrderItems { get; set; }
 
+        // Order items table
+        public DbSet<OrderItem> OrderItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder); // 这一行很重要，要调用基类方法，否则 Identity 的表不会创建
+            base.OnModelCreating(modelBuilder);
+            // Important: call base method so Identity tables are created
 
-            // 显式指定 CartItem 主键
+            // Explicitly set primary key for CartItem
             modelBuilder.Entity<CartItem>().HasKey(c => c.Id);
 
-            // 明确 CartItem 和 Product 关系，防止 EF Core 推断失败
+            // Define relationship between CartItem and Product
             modelBuilder.Entity<CartItem>()
                 .HasOne(c => c.Product)
-                .WithMany() // 如果 Product 没有导航属性回指 CartItem，就用无导航的关系
+                .WithMany() // if Product has no navigation property back to CartItem
                 .HasForeignKey(c => c.ProductId)
                 .IsRequired();
 
-            //modelBuilder.Entity<Product>().HasData(
-            //    new Product { Id = 1, Name = "Fishing Rod", Price = 29.99M, Features = "High-quality fishing rod" },
-            //    new Product { Id = 2, Name = "Fishing Net", Price = 19.99M, Features = "Durable fishing net" }
-            //);
+        
         }
     }
 }

@@ -1,92 +1,78 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using LovelyFish.API.Server.Services;
 
 namespace LovelyFish.API.Server.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]
+    [ApiController] // Enables API-specific behaviors like automatic model binding and 400 responses
     public class UploadController : ControllerBase
     {
-        private readonly IWebHostEnvironment _env;
+        private readonly BlobService _blobService;
 
-        public UploadController(IWebHostEnvironment env)
+        // Inject BlobService to handle file storage
+        public UploadController(BlobService blobService)
         {
-            _env = env;
-            Console.WriteLine("[UploadController] WebRootPath = " + _env.WebRootPath);
+            _blobService = blobService;
         }
 
+        // ==================== Upload Files ====================
+        // POST api/upload
         [HttpPost]
         public async Task<IActionResult> UploadFiles([FromForm] List<IFormFile> files)
         {
-
+            // Validate input
             if (files == null || files.Count == 0)
             {
-                Console.WriteLine("[UploadFiles] 没有文件上传");
-                return BadRequest("没有文件上传");
+                Console.WriteLine("[UploadFiles] No files uploaded");
+                return BadRequest("No files uploaded");
             }
 
             var uploadedFiles = new List<object>();
-            var uploadPath = Path.Combine(_env.WebRootPath, "uploads");
 
-            try
+            foreach (var file in files)
             {
-                if (!Directory.Exists(uploadPath))
-                    Directory.CreateDirectory(uploadPath);
-
-                foreach (var file in files)
+                if (file.Length > 0)
                 {
-                    if (file.Length > 0)
-                    {
-                        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-                        var filePath = Path.Combine(uploadPath, fileName);
+                    // Generate unique file name to avoid collisions
+                    var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
 
-                        try
+                    try
+                    {
+                        using (var stream = file.OpenReadStream())
                         {
-                            using (var stream = new FileStream(filePath, FileMode.Create))
-                            {
-                                await file.CopyToAsync(stream);
-                            }
-                            uploadedFiles.Add(new { fileName });
-                            Console.WriteLine("[UploadFiles] 保存成功: " + fileName);
+                            // Upload file to blob storage
+                            var fileUrl = await _blobService.UploadFileAsync(stream, fileName);
+                            uploadedFiles.Add(new { fileName, fileUrl });
                         }
-                        catch (Exception exFile)
-                        {
-                            Console.WriteLine("[UploadFiles] 保存失败: " + exFile.Message);
-                        }
+                        Console.WriteLine("[UploadFiles] Upload succeeded: " + fileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("[UploadFiles] Upload failed: " + ex.Message);
                     }
                 }
+            }
 
-                return Ok(uploadedFiles);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("[UploadFiles] 上传异常: " + ex.Message);
-                return StatusCode(500, "上传失败");
-            }
+            // Return list of uploaded files with URLs
+            return Ok(uploadedFiles);
         }
 
+        // ==================== Delete File ====================
+        // DELETE api/upload/delete/{fileName}
         [HttpDelete("delete/{fileName}")]
-        public IActionResult DeleteFile(string fileName)
+        public async Task<IActionResult> DeleteFile(string fileName)
         {
             try
             {
-                var uploadPath = Path.Combine(_env.WebRootPath, "uploads", fileName);
-
-                if (System.IO.File.Exists(uploadPath))
-                {
-                    System.IO.File.Delete(uploadPath);
-                    Console.WriteLine("[DeleteFile] 删除成功: " + fileName);
-                    return Ok("删除成功");
-                }
-                else
-                {
-                    Console.WriteLine("[DeleteFile] 文件不存在: " + fileName);
-                    return NotFound("文件不存在");
-                }
+                // Delete file from blob storage
+                await _blobService.DeleteFileAsync(fileName);
+                Console.WriteLine("[DeleteFile] Deleted successfully: " + fileName);
+                return Ok("File deleted successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[DeleteFile] 删除异常: " + ex.Message);
-                return StatusCode(500, "删除失败");
+                Console.WriteLine("[DeleteFile] Delete error: " + ex.Message);
+                return StatusCode(500, "File deletion failed");
             }
         }
     }

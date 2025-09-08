@@ -29,7 +29,7 @@ namespace LovelyFish.Controllers
         public async Task<IActionResult> AddToCart([FromBody] AddCartItemDto dto)
         {
             if (dto == null || dto.ProductId <= 0 || dto.Quantity <= 0)
-                return BadRequest("参数无效");
+                return BadRequest("Invalid parameters");
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null)
@@ -43,7 +43,7 @@ namespace LovelyFish.Controllers
             else
             {
                 var product = await _context.Products.FindAsync(dto.ProductId);
-                if (product == null) return NotFound("商品不存在");
+                if (product == null) return NotFound("Product not found");
 
                 var newItem = new CartItem
                 {
@@ -66,10 +66,10 @@ namespace LovelyFish.Controllers
             if (userId == null)
                 return Unauthorized();
 
-            // 加载 CartItems，同时 Include Product，再 ThenInclude Product.Images
+            // Load CartItems, include Product, then include Product.Images
             var cartItems = await _context.CartItems
                 .Include(c => c.Product)
-                    .ThenInclude(p => p.Images)  // 关键：加载图片集合
+                    .ThenInclude(p => p.Images)  // Key: load product images
                 .Where(c => c.UserId == userId)
                 .ToListAsync();
 
@@ -104,7 +104,7 @@ namespace LovelyFish.Controllers
         {
             var item = await _context.CartItems.FindAsync(id);
             if (item == null) return NotFound();
-            if (quantity < 1) return BadRequest("数量必须大于0");
+            if (quantity < 1) return BadRequest("Quantity must be greater than 0");
 
             item.Quantity = quantity;
             await _context.SaveChangesAsync();
@@ -122,7 +122,6 @@ namespace LovelyFish.Controllers
             return NoContent();
         }
 
-
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto, [FromServices] IOptions<EmailSettings> emailSettings)
         {
@@ -130,7 +129,7 @@ namespace LovelyFish.Controllers
             if (userId == null) return Unauthorized();
 
             if (dto.Items == null || !dto.Items.Any())
-                return BadRequest("请至少选择一个商品");
+                return BadRequest("Please select at least one product");
 
             var itemIds = dto.Items.Select(i => i.Id).ToList();
 
@@ -139,9 +138,9 @@ namespace LovelyFish.Controllers
                 .Where(c => c.UserId == userId && itemIds.Contains(c.Id))
                 .ToListAsync();
 
-            if (!cartItems.Any()) return BadRequest("没有有效的购物车商品");
+            if (!cartItems.Any()) return BadRequest("No valid cart items found");
 
-            // 更新数量（以前端传的为准）
+            // Update quantities (based on frontend input)
             foreach (var dtoItem in dto.Items)
             {
                 var cartItem = cartItems.FirstOrDefault(c => c.Id == dtoItem.Id);
@@ -152,14 +151,14 @@ namespace LovelyFish.Controllers
             }
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null) return NotFound("用户不存在");
+            if (user == null) return NotFound("User not found");
 
             Console.WriteLine($"[DEBUG] User ID: {user.Id}");
             Console.WriteLine($"[DEBUG] NewUserCouponUsed: {user.NewUserCouponUsed}");
 
             var phone = user?.PhoneNumber ?? string.Empty;
 
-            // 计算原始订单总价
+            // Calculate original total price
             decimal originalTotal = cartItems.Sum(c =>
             {
                 var price = c.Product.DiscountPercent > 0
@@ -170,39 +169,39 @@ namespace LovelyFish.Controllers
 
             decimal discount = 0;
 
-            // 新人卷（仅一次）
+            // New user coupon (only once)
             if (dto.UseNewUserCoupon && !user.NewUserCouponUsed)
             {
                 discount += 5;
                 user.NewUserCouponUsed = true;
             }
 
-            // 检查 50/100 卷互斥
+            // Check 50/100 coupon mutual exclusivity
             if (dto.Use50Coupon && dto.Use100Coupon)
                 return BadRequest("50 coupon and 100 coupon cannot be used together");
 
-            // 累计消费 + 本次订单
+            // Accumulated spending + current order
             decimal accumulatedWithCurrent = user.AccumulatedAmount + originalTotal;
             if (dto.Use100Coupon && accumulatedWithCurrent >= 100)
             {
                 discount += 10;
-                user.AccumulatedAmount = 0; // 使用后清零
+                user.AccumulatedAmount = 0; // Reset after using
             }
             else if (dto.Use50Coupon && accumulatedWithCurrent >= 50)
             {
                 discount += 5;
-                user.AccumulatedAmount = 0; // 使用后清零
+                user.AccumulatedAmount = 0; // Reset after using
             }
             else
             {
-                // 没用 50/100 卷，累计金额累加
+                // If no 50/100 coupon is used, accumulate the amount
                 user.AccumulatedAmount += originalTotal;
             }
 
-            // 最终总价，不能小于 0
+            // Final total, cannot be less than 0
             decimal finalTotal = Math.Max(originalTotal - discount, 0);
 
-            // 创建订单
+            // Create order
             var order = new Order
             {
                 UserId = userId,
@@ -211,8 +210,8 @@ namespace LovelyFish.Controllers
                 CustomerName = dto.CustomerName,
                 CustomerEmail = dto.CustomerEmail,
                 ShippingAddress = dto.ShippingAddress,
-                PhoneNumber = phone,        // Profile 电话
-                ContactPhone = dto.Phone,   // 下单页面电话
+                PhoneNumber = phone,        // Profile phone
+                ContactPhone = dto.Phone,   // Checkout phone
                 OrderItems = cartItems.Select(c => new OrderItem
                 {
                     ProductId = c.ProductId,
@@ -223,12 +222,11 @@ namespace LovelyFish.Controllers
                 }).ToList()
             };
 
-
             _context.Orders.Add(order);
             _context.CartItems.RemoveRange(cartItems);
             await _context.SaveChangesAsync();
 
-            // ==================== Brevo 邮件通知 ====================
+            // ==================== Brevo Email Notifications ====================
             try
             {
                 var brevoApiKey = emailSettings.Value.BrevoApiKey;
@@ -236,23 +234,23 @@ namespace LovelyFish.Controllers
                 client.DefaultRequestHeaders.Add("accept", "application/json");
                 client.DefaultRequestHeaders.Add("api-key", brevoApiKey);
 
-                // =========== 用户邮件内容 ==========
+                // =========== User Email Content ==========
                 string BuildUserHtmlContent(string name)
                 {
                     var sb = new StringBuilder();
                     sb.Append($"<p>Hi {name},</p>");
-                    sb.Append("<p>感谢您的订单！请通过以下方式进行转账支付：</p>");
+                    sb.Append("<p>Thank you for your order! Please make the payment via the following bank details:</p>");
                     sb.Append("<p><strong>Bank:</strong> " + emailSettings.Value.BankName + "<br>");
                     sb.Append("<strong>Account Name:</strong> " + emailSettings.Value.AccountName + "<br>");
                     sb.Append("<strong>Account Number:</strong> " + emailSettings.Value.AccountNumber + "</p>");
-                    sb.Append("<h4>订单明细：</h4><ul>");
+                    sb.Append("<h4>Order Details:</h4><ul>");
 
                     foreach (var item in cartItems)
                         sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {item.Product.Price:C}</li>");
                     sb.Append("</ul>");
-                    sb.Append($"<p>原始总价: {originalTotal:C}</p>");
-                    sb.Append($"<p>折扣: {discount:C}</p>");
-                    sb.Append($"<p><strong>最终付款金额: {finalTotal:C}</strong></p>");
+                    sb.Append($"<p>Original Total: {originalTotal:C}</p>");
+                    sb.Append($"<p>Discount: {discount:C}</p>");
+                    sb.Append($"<p><strong>Final Payment: {finalTotal:C}</strong></p>");
                     return sb.ToString();
                 }
 
@@ -260,70 +258,68 @@ namespace LovelyFish.Controllers
                 {
                     var sb = new StringBuilder();
                     sb.AppendLine($"Hi {name},");
-                    sb.AppendLine("感谢您的订单！请通过以下方式进行转账支付：");
+                    sb.AppendLine("Thank you for your order! Please make the payment via the following bank details:");
                     sb.AppendLine("Bank: " + emailSettings.Value.BankName);
                     sb.AppendLine("Account Name: " + emailSettings.Value.AccountName);
                     sb.AppendLine("Account Number: " + emailSettings.Value.AccountNumber);
-                    sb.AppendLine("订单明细：");
+                    sb.AppendLine("Order Details:");
                     foreach (var item in cartItems)
                         sb.AppendLine($"{item.Product.Title} × {item.Quantity} - {item.Product.Price:C}");
-                    sb.AppendLine($"原始总价: {originalTotal:C}");
-                    sb.AppendLine($"折扣: {discount:C}");
-                    sb.AppendLine($"最终付款金额: {finalTotal:C}");
+                    sb.AppendLine($"Original Total: {originalTotal:C}");
+                    sb.AppendLine($"Discount: {discount:C}");
+                    sb.AppendLine($"Final Payment: {finalTotal:C}");
                     return sb.ToString();
                 }
 
-
-                // ========= 管理员邮件内容 ========
+                // ========= Admin Email Content ========
                 string BuildAdminHtmlContent(Order order)
                 {
                     var sb = new StringBuilder();
-                    sb.Append("<h3>📢 新订单提醒</h3>");
-                    sb.Append($"<p><strong>订单号:</strong> {order.Id}</p>");
-                    sb.Append($"<p><strong>客户姓名:</strong> {order.CustomerName}</p>");
-                    sb.Append($"<p><strong>客户邮箱:</strong> {order.CustomerEmail}</p>");
-                    sb.Append("<h4>订单明细：</h4><ul>");
+                    sb.Append("<h3>📢 New Order Notification</h3>");
+                    sb.Append($"<p><strong>Order ID:</strong> {order.Id}</p>");
+                    sb.Append($"<p><strong>Customer Name:</strong> {order.CustomerName}</p>");
+                    sb.Append($"<p><strong>Customer Email:</strong> {order.CustomerEmail}</p>");
+                    sb.Append("<h4>Order Details:</h4><ul>");
                     foreach (var item in cartItems)
                         sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {(item.Product.Price * item.Quantity):C}</li>");
                     sb.Append("</ul>");
-                    sb.Append($"<p><strong>最终付款金额: {finalTotal:C}</strong></p>");
-                    sb.Append("<p>请尽快在后台查看订单详情。</p>");
+                    sb.Append($"<p><strong>Final Payment: {finalTotal:C}</strong></p>");
+                    sb.Append("<p>Please check the admin panel for more details.</p>");
                     return sb.ToString();
                 }
 
                 string BuildAdminTextContent(Order order)
                 {
                     var sb = new StringBuilder();
-                    sb.AppendLine("📢 新订单提醒");
-                    sb.AppendLine($"订单号: {order.Id}");
-                    sb.AppendLine($"客户姓名: {order.CustomerName}");
-                    sb.AppendLine($"客户邮箱: {order.CustomerEmail}");
-                    sb.AppendLine("订单明细：");
+                    sb.AppendLine("📢 New Order Notification");
+                    sb.AppendLine($"Order ID: {order.Id}");
+                    sb.AppendLine($"Customer Name: {order.CustomerName}");
+                    sb.AppendLine($"Customer Email: {order.CustomerEmail}");
+                    sb.AppendLine("Order Details:");
                     foreach (var item in cartItems)
                         sb.AppendLine($"{item.Product.Title} × {item.Quantity} - {(item.Product.Price * item.Quantity):C}");
-                    sb.AppendLine($"最终付款金额: {finalTotal:C}");
-                    sb.AppendLine("请尽快在后台查看订单详情。");
+                    sb.AppendLine($"Final Payment: {finalTotal:C}");
+                    sb.AppendLine("Please check the admin panel for more details.");
                     return sb.ToString();
                 }
 
-                // ====== 发送邮件 ======
+                // ====== Send Emails ======
                 var userPayload = new
                 {
                     sender = new { email = "lovelyfishaquarium@outlook.com", name = "LovelyFishAquarium" },
                     to = new[] { new { email = user.Email, name = dto.CustomerName } },
-                    subject = "订单确认 - LovelyFishAquarium",
+                    subject = "Order Confirmation - LovelyFishAquarium",
                     htmlContent = BuildUserHtmlContent(dto.CustomerName),
                     textContent = BuildUserTextContent(dto.CustomerName)
                 };
                 var userContent = new StringContent(JsonSerializer.Serialize(userPayload), Encoding.UTF8, "application/json");
                 await client.PostAsync("https://api.brevo.com/v3/smtp/email", userContent);
 
-
                 var adminPayload = new
                 {
                     sender = new { email = "lovelyfishaquarium@outlook.com", name = "LovelyFishAquarium" },
-                    to = new[] { new { email = "lovelyfishaquarium@outlook.com", name = "管理员" } },
-                    subject = "新订单通知 - LovelyFishAquarium",
+                    to = new[] { new { email = "lovelyfishaquarium@outlook.com", name = "Admin" } },
+                    subject = "New Order Notification - LovelyFishAquarium",
                     htmlContent = BuildAdminHtmlContent(order),
                     textContent = BuildAdminTextContent(order)
                 };
@@ -333,7 +329,7 @@ namespace LovelyFish.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine("[Brevo Email Error] " + ex.Message);
-                // 邮件失败不影响订单保存
+                // Email failure does not affect order saving
             }
 
             return Ok(new
@@ -366,13 +362,8 @@ namespace LovelyFish.Controllers
     }
 }
 
-
-//用户和管理员同时收到邮件
-
-//邮件显示商品明细、原价、折扣、最终付款金额
-
-//HTML + 纯文本双版本
-
-//银行信息（Bank + Account Name + Account Number）可配置化
-
-//邮件发送失败不影响订单保存
+// Both user and admin receive email notifications
+// Emails include product details, original price, discount, and final payment amount
+// Emails are sent in both HTML and plain text versions
+// Bank info (Bank + Account Name + Account Number) is configurable
+// Email sending failure does not affect order saving

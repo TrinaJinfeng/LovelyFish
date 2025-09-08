@@ -9,25 +9,21 @@ using LovelyFish.API.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// -------------------
+// Load .env file (for local development)
+// -------------------
+Env.Load(); // If no .env exists locally, it won't throw an error
 
-// 加载 .env 文件（本地开发用）
-
-Env.Load(); // 如果本地没有 .env 也不会报错
-
-
-// 配置系统读取方式
-// 优先读取 appsettings.json 再读取环境变量
-
+// -------------------
+// Configuration sources
+// -------------------
+// Read appsettings.json first, then environment variables
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddEnvironmentVariables();
 
-//EmailService 里用 IOptions<EmailSettings> 获取配置。
-
-//所有默认值（邮箱、银行信息）都写在 EmailSettings 里。
-
-//控制器只负责调用 SendEmail，不用再写 HttpClient 逻辑。
-
-// 注入 EmailSettings
+// -------------------
+// Inject EmailSettings from environment variables
+// -------------------
 builder.Services.Configure<EmailSettings>(options =>
 {
     options.BrevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
@@ -36,150 +32,171 @@ builder.Services.Configure<EmailSettings>(options =>
     options.BankName = Environment.GetEnvironmentVariable("BANK_NAME");
     options.AccountNumber = Environment.GetEnvironmentVariable("ACCOUNT_NUMBER");
     options.AccountName = Environment.GetEnvironmentVariable("ACCOUNT_NAME");
+    options.FrontendBaseUrl = Environment.GetEnvironmentVariable("FRONTEND_BASE_URL");
+    options.ApiBaseUrl = Environment.GetEnvironmentVariable("API_BASE_URL");
+
 });
 
-// 注入 EmailService
+// Register EmailService as singleton
 builder.Services.AddSingleton<EmailService>();
 
+// Register BlobService (file upload service) as singleton
+builder.Services.AddSingleton<BlobService>();
 
-//Add services to the container. 控制器
-
+// -------------------
+// Controllers and JSON options
+// -------------------
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
+        // Avoid reference loop issues when serializing navigation properties
         options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-       // options.JsonSerializerOptions.WriteIndented = true; // (可选) 格式化输出 JSON
     });
-// Swagger 
+
+// -------------------
+// Swagger configuration
+// -------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 注册自己的数据库上下文
+// -------------------
+// Database connection string setup
+// -------------------
+var rawConn = builder.Configuration.GetConnectionString("DefaultConnection");
+var dbServer = Environment.GetEnvironmentVariable("AZURE_SQL_SERVER");
+var dbName = Environment.GetEnvironmentVariable("AZURE_SQL_DB");
+var dbUser = Environment.GetEnvironmentVariable("AZURE_SQL_USER");
+var dbPass = Environment.GetEnvironmentVariable("AZURE_SQL_PASSWORD");
+
+// Blob storage settings
+builder.Services.Configure<BlobSettings>(options =>
+{
+    options.ConnectionString = Environment.GetEnvironmentVariable("AZURE_BLOB_CONNECTION_STRING");
+    options.ContainerName = "uploads";
+});
+
+var frontendBaseUrl = builder.Configuration["FRONTEND_BASE_URL"];
+
+
+
+// Build final connection string
+string finalConn;
+if (!string.IsNullOrEmpty(dbUser) && !string.IsNullOrEmpty(dbPass))
+{
+    finalConn = rawConn
+        .Replace("%AZURE_SQL_SERVER%", dbServer)
+        .Replace("%AZURE_SQL_DB%", dbName)
+        .Replace("%AZURE_SQL_USER%", dbUser)
+        .Replace("%AZURE_SQL_PASSWORD%", dbPass);
+}
+else
+{
+    // Fallback to Windows authentication if user/pass not provided
+    finalConn = $"Server={dbServer};Database={dbName};Trusted_Connection=True;Encrypt=False;";
+}
+
+// Register DbContexts
 builder.Services.AddDbContext<LovelyFishContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(finalConn, sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
-// 添加 Identity 所用的 DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(finalConn, sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
-// 添加 Identity 服务 指定用户和角色（使用 ApplicationUser 作为用户类型）
+// -------------------
+// Identity configuration
+// -------------------
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// 配置 Identity Cookie 认证安全策略
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-        ? CookieSecurePolicy.SameAsRequest  //（本地开发 OK，上线要改成 Always）
+        ? CookieSecurePolicy.SameAsRequest
         : CookieSecurePolicy.Always;
     options.Cookie.Name = ".LovelyFish.AuthCookie";
-
-    // 跨域时 SameSite 必须 None，否则 Cookie 不会带过去
     options.Cookie.SameSite = SameSiteMode.None;
-
     options.ExpireTimeSpan = TimeSpan.FromHours(1);
-
     options.SlidingExpiration = true;
-
     options.LoginPath = "/api/account/login";
     options.LogoutPath = "/api/account/logout";
 
+    // API request login redirect handling
     options.Events.OnRedirectToLogin = context =>
     {
-        // 如果是 API 请求，则返回 401 而不是重定向
         if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == 200)
         {
             context.Response.StatusCode = 401;
             return Task.CompletedTask;
         }
-        // 其他情况继续默认重定向
         context.Response.Redirect(context.RedirectUri);
         return Task.CompletedTask;
     };
 });
 
-// 配置 CORS：允许 React 前端携带 Cookie
+
+
+//CORS configuration(local + Azure front-end)
+//-------------------
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(frontendBaseUrl)
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();  // 允许携带 Cookie
+              .AllowCredentials();
     });
 });
 
 
+// Build and configure app
+// -------------------
+
 var app = builder.Build();
 
-// 开发环境启用 Swagger
-if (app.Environment.IsDevelopment())
+
+// Middleware
+// -------------------
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "LovelyFish API V1");
+    c.RoutePrefix = "swagger"; // Swagger UI URL: /swagger
+});
 
 app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-
 app.UseRouting();
 app.UseCors("AllowReactApp");
-
-
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Fallback for SPA routing
 app.MapFallbackToFile("/index.html");
 
 
+// Database seeding
+// -------------------
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
 
-    //1. 产品数据 Seeder
     var context = services.GetRequiredService<LovelyFishContext>();
     context.Database.EnsureCreated();
-    Console.WriteLine("[Seed] 产品种子方法开始执行");
+
+    Console.WriteLine("[Seed] Product seeder started");
     DataSeeder.Seed(services);
 
-    //2. 管理员账号 Seeder
-    Console.WriteLine("[Seed] IdentitySeeder 开始执行");
-    await IdentitySeeder.SeedAdminAsync(services);  // 调用IdentitySeeder
+    Console.WriteLine("[Seed] IdentitySeeder started");
+    await IdentitySeeder.SeedAdminAsync(services);
 }
 
-
-    //    try
-    //    {
-    //        var product = new Product
-    //        {
-    //            Name = "Test Product",
-    //            Price = 199,
-    //            Output = 1000,
-    //            Wattage = 60,
-    //            Image = "test.jpg",
-    //            Category = "测试",
-    //            Features = "Just test"
-    //        };
-
-    //        context.Products.Add(product);
-    //        context.SaveChanges();
-    //        Console.WriteLine("[Test] 成功插入测试产品！");
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        Console.WriteLine("[Test] 插入失败：" + ex.Message);
-    //        if (ex.InnerException != null)
-    //            Console.WriteLine("Inner: " + ex.InnerException.Message);
-    //    }
-
-
 app.Run();
-

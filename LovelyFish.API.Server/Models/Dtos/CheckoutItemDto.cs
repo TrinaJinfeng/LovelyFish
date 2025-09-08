@@ -3,6 +3,6 @@
     public class CheckoutItemDto
     {
         public int Id { get; set; }        // CartItem Id
-        public int Quantity { get; set; }  // 数量
+        public int Quantity { get; set; }  // Quantity
     }
 }

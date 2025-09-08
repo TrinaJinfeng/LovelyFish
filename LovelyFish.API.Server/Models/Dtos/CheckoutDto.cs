@@ -2,24 +2,27 @@
 
 namespace LovelyFish.API.Server.Dtos
 {
+    // DTO for checkout process
     public class CheckoutDto
     {
+        // Customer's full name
         public string CustomerName { get; set; } = string.Empty;
+
+        // Shipping address provided by customer
         public string ShippingAddress { get; set; } = string.Empty;
-        public string Phone { get; set; } = string.Empty; //  ConfirmOrderPage 填的电话
-        //public Dictionary<int, int>? Quantities { get; set; }
-        //public List<int> CartItemIds { get; set; } = new List<int>();
+
+        // Phone number entered in ConfirmOrderPage
+        public string Phone { get; set; } = string.Empty;
+
+        // Customer email
         public string CustomerEmail { get; set; } = string.Empty;
+
+        // List of items in the order
         public List<CheckoutItemDto> Items { get; set; } = new List<CheckoutItemDto>();
 
-        // 前端选择使用哪些优惠
-        public bool UseNewUserCoupon { get; set; } = false; // 5刀新用户只能用一次
-        public bool Use50Coupon { get; set; } = false;      // 累计满 50
-        public bool Use100Coupon { get; set; } = false;     // 累计满 100
-
-
-
-        
-
+        // Frontend-selected discount coupons
+        public bool UseNewUserCoupon { get; set; } = false; // $5 new user coupon, can only use once
+        public bool Use50Coupon { get; set; } = false;      // Coupon for orders over $50
+        public bool Use100Coupon { get; set; } = false;     // Coupon for orders over $100
     }
 }

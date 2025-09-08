@@ -6,26 +6,24 @@ namespace LovelyFish.API.Server.Models
     public class Order
     {
         [Key]
-        public int Id { get; set; }
+        public int Id { get; set; }  // Primary key
 
-        public string UserId { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty; // Reference to the user who placed the order
 
-        public string? CustomerName { get; set; }       // 新增用户姓名
+        public string? CustomerName { get; set; } // Customer's full name
 
-        public string CustomerEmail { get; set; } = string.Empty;
-        public string? ShippingAddress { get; set; }     // 新增收货地址
-        public string? PhoneNumber { get; set; }         // 联系电话 Profile里的
-        public string? ContactPhone { get; set; }     //  下单页面填写的确认电话
+        public string CustomerEmail { get; set; } = string.Empty; // Customer email for notifications
+        public string? ShippingAddress { get; set; } // Shipping address
+        public string? PhoneNumber { get; set; } // User profile phone number
+        public string? ContactPhone { get; set; } // Phone number entered during order confirmation
 
-        public string Status { get; set; } = "pending";
-        public string Courier { get; set; } = string.Empty;
-        public string TrackingNumber { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
+        public string Status { get; set; } = "pending"; // Order status: pending, shipped, delivered, etc.
+        public string Courier { get; set; } = string.Empty; // Courier company name
+        public string TrackingNumber { get; set; } = string.Empty; // Tracking number for shipment
+        public DateTime CreatedAt { get; set; } // Timestamp of order creation
 
-        public decimal TotalPrice { get; set; }
+        public decimal TotalPrice { get; set; } // Total order amount
 
-        public List<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+        public List<OrderItem> OrderItems { get; set; } = new List<OrderItem>(); // List of products in the order
     }
 }
-
-//记录订单
