@@ -6,7 +6,7 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 ---
 
 ## Live Site / Deployment
-- Deployed on Azure Web App.
+- Deployed on Azure App Service.
 - Backend API serves the frontend React app at [www.lovelyfishaquarium.co.nz](https://www.lovelyfishaquarium.co.nz)
 
 ---
@@ -23,7 +23,7 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 - **Database:** SQL Server / Entity Framework Core  
 - **API Documentation:** Swagger UI  
 - **Email Service:** Brevo / SMTP (configured via environment variables)  
-- **Deployment:** Azure App Service / Docker (if applicable)  
+- **Deployment:** Azure App Service
 
 ---
 
@@ -31,4 +31,4 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/trinazhang2024/LovelyFish-Backend.git
+git clone  https://github.com/TrinaJinfeng/LovelyFish.git
