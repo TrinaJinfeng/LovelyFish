@@ -33,27 +33,30 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
     ```bash
     git clone https://github.com/TrinaJinfeng/LovelyFish.git
 
-2. Navigate to the project folder:
-   bash
+2. **Navigate to the project folder:**
+   ```bash
    cd LovelyFish-Backend
 
-3. Install dependencies and restore NuGet packages:
-  bash
+3. **Install dependencies and restore NuGet packages:**
+  ```bash
   dotnet restore
+```
 
-4. Apply database migrations:
-  bash
+4. **Apply database migrations:**
+  ```bash
   dotnet ef database update
+```
 
-5. Run the backend server:
-  bash
+5. **Run the backend server:**
+  ```bash
   dotnet run
+```
 
-6. Open Swagger UI to explore API endpoints:
-  bash
+6. **Open Swagger UI to explore API endpoints:**
+  ```bash
   http://localhost:7148/swagger
   ⚠️ Note: Swagger URL is local; production endpoints are protected and require authentication.
-
+```
 ---
 
 ## API Documentation
