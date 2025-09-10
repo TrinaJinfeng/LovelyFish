@@ -80,3 +80,24 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 ## Testing
 
 ---
+/Controllers   # API controllers for products, orders, users
+/Models        # Database models
+/Data          # DbContext and migrations
+/Services      # Email service, business logic
+/Properties    # Project properties
+
+---
+## Highlights
+
+Full-stack integration with frontend React app
+
+Proper RESTful API design with Swagger documentation
+
+Environment variables for secure configuration
+
+Deployed on Azure for live access
+
+## Author
+
+Trina Zhang
+Email: zhang.trina@yahoo.co.nz
