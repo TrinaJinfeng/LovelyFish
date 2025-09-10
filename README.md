@@ -20,10 +20,34 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 
 ## Tech Stack
 - **Backend:** ASP.NET Core  
-- **Database:** SQL Server / Entity Framework Core  
+- **Database:** SQL Server (managed via SSMS), deployed on Azure SQL  
+- **Image Storage:** Azure Blob Storage for product images  
 - **API Documentation:** Swagger UI  
 - **Email Service:** Brevo / SMTP (configured via environment variables)  
-- **Deployment:** Azure App Service
+- **Deployment:** Azure App Service  
+
+---
+
+## Tech Stack
+- **Backend:** ASP.NET Core  
+- **Database:** SQL Server (managed via SSMS), deployed on Azure SQL  
+- **Image Storage:** Azure Blob Storage for product images  
+- **API Documentation:** Swagger UI  
+- **Email Service:** Brevo / SMTP (configured via environment variables)  
+- **Deployment:** Azure App Service  
+
+---
+
+## Environment Variables
+| Variable | Description |
+|----------|-------------|
+| `DB_CONNECTION` | Azure SQL connection string |
+| `BLOB_STORAGE_URL` | Base URL for Azure Blob Storage (used to store and serve product images) |
+| `BLOB_STORAGE_KEY` | Access key for Azure Blob Storage |
+| `SMTP_USER` | Email service username |
+| `SMTP_PASS` | Email service password |
+| `FRONTEND_URL` | URL of the frontend React app |
+
 
 ---
 
