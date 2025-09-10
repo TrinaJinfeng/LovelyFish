@@ -45,17 +45,18 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 ## Installation & Running Locally
 
 1. **Clone the repository:**
-    ```bash
-    git clone https://github.com/TrinaJinfeng/LovelyFish.git
-
+```bash
+git clone https://github.com/TrinaJinfeng/LovelyFish.git
+```
 2. **Navigate to the project folder:**
-   ```bash
-   cd LovelyFish-Backend
+```bash
+cd LovelyFish-Backend
+```
 
 3. **Install dependencies and restore NuGet packages:**
-  ```bash
-  dotnet restore
-  ```
+```bash
+dotnet restore
+```
 
 4. **Apply database migrations:**
   ```bash
