@@ -29,6 +29,7 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 ---
 
 ## Environment Variables
+
 | Variable | Description |
 |----------|-------------|
 | `DB_CONNECTION` | Azure SQL connection string |
@@ -54,23 +55,23 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 3. **Install dependencies and restore NuGet packages:**
   ```bash
   dotnet restore
-```
+  ```
 
 4. **Apply database migrations:**
   ```bash
   dotnet ef database update
-```
+  ```
 
 5. **Run the backend server:**
   ```bash
   dotnet run
-```
+  ```
 
 6. **Open Swagger UI to explore API endpoints:**
   ```bash
   http://localhost:7148/swagger
   ⚠️ Note: Swagger URL is local; production endpoints are protected and require authentication.
-```
+  ```
 ---
 
 ## API Documentation
@@ -118,11 +119,13 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 
 ---
 
-/Controllers   # API controllers for products, orders, users
-/Models        # Database models
-/Data          # DbContext and migrations
-/Services      # Email service, business logic
-/Properties    # Project properties
+## Project Structure
+
+- `/Controllers` : API controllers for products, orders, users
+- `/Models`      : Database models
+- `/Data`        : DbContext and migrations
+- `/Services`    : Email service and Blob Service
+- `/Properties`  : Project properties
 
 ---
 ## Highlights
