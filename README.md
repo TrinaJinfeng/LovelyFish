@@ -66,3 +66,17 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
   http://localhost:7148/swagger
 - **Live Swagger (for reference only):**
   [View Swagger UI](https://lovelyfish-backend-esgtdkf7h0e2ambg.australiaeast-01.azurewebsites.net/swagger/index.html)
+---
+
+| Variable        | Description                   |
+| --------------- | ----------------------------- |
+| `DB_CONNECTION` | SQL Server connection string  |
+| `SMTP_USER`     | Email service username        |
+| `SMTP_PASS`     | Email service password        |
+| `FRONTEND_URL`  | URL of the frontend React app |
+> ⚠️ Never commit real credentials to GitHub. Use environment variables or a secret manager.
+---
+
+## Testing
+
+---
