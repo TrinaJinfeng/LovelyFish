@@ -28,16 +28,6 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 
 ---
 
-## Tech Stack
-- **Backend:** ASP.NET Core  
-- **Database:** SQL Server (managed via SSMS), deployed on Azure SQL  
-- **Image Storage:** Azure Blob Storage for product images  
-- **API Documentation:** Swagger UI  
-- **Email Service:** Brevo / SMTP (configured via environment variables)  
-- **Deployment:** Azure App Service  
-
----
-
 ## Environment Variables
 | Variable | Description |
 |----------|-------------|
@@ -101,7 +91,39 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 > ⚠️ Never commit real credentials to GitHub. Use environment variables or a secret manager.
 ---
 
-## Testing
+## 🧪 Testing & Environment Differences (Backend)
+
+### 1. Manual API Testing
+- **Swagger UI:** After implementing each API endpoint, test manually using Swagger.
+  - Examples include: 
+    - User registration
+    - Product image upload
+    - Sending email notifications
+- **API Validation:** 
+  - Check HTTP status codes (200, 400, 401, etc.)
+  - Ensure data consistency and proper error handling
+
+### 2. Database Connection Differences
+- **Local SQL Server:** Connection string in `appsettings.Development.json`, tests work normally.
+- **Azure SQL:** Connection string stored in environment variables. Sometimes, if not all required environment variables are set, backend throws database connection errors.
+- **Solution:** Always configure all required environment variables for both local and cloud environments to ensure consistent connectivity.
+
+### 3. Image Upload Differences
+- **Local:** Images uploaded to local `wwwroot/images`, accessed normally.
+- **Azure Blob Storage:** Directly using local paths causes 404 errors.
+- **Solution:** Backend returns full Blob URLs; frontend uses these URLs directly to ensure images display correctly.
+
+### 4. Email Service Differences
+- **Local:** Used SMTP test account, emails sent successfully.
+- **Production / Azure:** Initially tried using Brevo with a Zoho domain email. Even with correct DNS and verification, emails went to spam and admin inbox did not receive them.
+- **Solution:** Switched to SMTP for sending and receiving emails. Credentials stored in environment variables (never hard-coded) to ensure security.
+
+### 5. Frontend Integration / CORS
+- **Local:** Frontend calls `localhost:5000` backend, works normally.
+- **Production / Azure:** Backend must allow frontend URL via CORS, otherwise requests are blocked.
+- **Solution:** Configure backend CORS to allow the deployed frontend URL.
+
+> ⚠️ Note: Never commit real credentials to GitHub. Always use environment variables or a secret manager for sensitive information.
 
 ---
 /Controllers   # API controllers for products, orders, users
