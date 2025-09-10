@@ -38,7 +38,7 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 | `SMTP_PASS` | Email service password |
 | `FRONTEND_URL` | URL of the frontend React app |
 
-
+> ⚠️ Never commit real credentials to GitHub. Use environment variables or a secret manager.
 ---
 
 ## Installation & Running Locally
@@ -82,15 +82,6 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
   [View Swagger UI](https://lovelyfish-backend-esgtdkf7h0e2ambg.australiaeast-01.azurewebsites.net/swagger/index.html)
 ---
 
-| Variable        | Description                   |
-| --------------- | ----------------------------- |
-| `DB_CONNECTION` | SQL Server connection string  |
-| `SMTP_USER`     | Email service username        |
-| `SMTP_PASS`     | Email service password        |
-| `FRONTEND_URL`  | URL of the frontend React app |
-> ⚠️ Never commit real credentials to GitHub. Use environment variables or a secret manager.
----
-
 ## 🧪 Testing & Environment Differences (Backend)
 
 ### 1. Manual API Testing
@@ -126,6 +117,7 @@ Built with ASP.NET Core, Entity Framework, and Swagger for API documentation.
 > ⚠️ Note: Never commit real credentials to GitHub. Always use environment variables or a secret manager for sensitive information.
 
 ---
+
 /Controllers   # API controllers for products, orders, users
 /Models        # Database models
 /Data          # DbContext and migrations
