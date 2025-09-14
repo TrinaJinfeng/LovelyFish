@@ -1,18 +1,20 @@
 ﻿using LovelyFish.API.Server.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace LovelyFish.API.Data
 {
     public static class IdentitySeeder
     {
         // Seed initial admin user and role
-        public static async Task SeedAdminAsync(IServiceProvider services)
+        public static async Task SeedAdminAsync(IServiceProvider services, IOptions<EmailSettings> emailSettings)
         {
             using var scope = services.CreateScope();
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            string adminEmail = "admin@example.com";
+            string adminEmail = emailSettings.Value.AdminEmail;
+            string adminName = emailSettings.Value.AdminName;
             string adminPassword = "Admin123!";
 
             // 1️⃣ Ensure "Admin" role exists
@@ -30,6 +32,7 @@ namespace LovelyFish.API.Data
                 {
                     UserName = adminEmail,
                     Email = adminEmail,
+                    Name = adminName,
                     EmailConfirmed = true
                 };
 
@@ -38,7 +41,7 @@ namespace LovelyFish.API.Data
                 {
                     // Assign Admin role to user
                     await userManager.AddToRoleAsync(adminUser, "Admin");
-                    Console.WriteLine("[IdentitySeeder] Admin user created: admin@example.com");
+                    Console.WriteLine($"[IdentitySeeder] Admin user created: {adminEmail}");
                 }
                 else
                 {

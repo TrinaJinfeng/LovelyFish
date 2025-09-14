@@ -125,6 +125,7 @@ namespace LovelyFish.Controllers
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto, [FromServices] IOptions<EmailSettings> emailSettings)
         {
+            var settings = emailSettings.Value;
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Unauthorized();
 
@@ -209,7 +210,8 @@ namespace LovelyFish.Controllers
                 TotalPrice = finalTotal,
                 CustomerName = dto.CustomerName,
                 CustomerEmail = dto.CustomerEmail,
-                ShippingAddress = dto.ShippingAddress,
+                DeliveryMethod = dto.DeliveryMethod,
+                ShippingAddress = dto.DeliveryMethod == "courier" ? dto.ShippingAddress : null,
                 PhoneNumber = phone,        // Profile phone
                 ContactPhone = dto.Phone,   // Checkout phone
                 OrderItems = cartItems.Select(c => new OrderItem
@@ -239,18 +241,29 @@ namespace LovelyFish.Controllers
                 {
                     var sb = new StringBuilder();
                     sb.Append($"<p>Hi {name},</p>");
-                    sb.Append("<p>Thank you for your order! Please make the payment via the following bank details:</p>");
-                    sb.Append("<p><strong>Bank:</strong> " + emailSettings.Value.BankName + "<br>");
-                    sb.Append("<strong>Account Name:</strong> " + emailSettings.Value.AccountName + "<br>");
-                    sb.Append("<strong>Account Number:</strong> " + emailSettings.Value.AccountNumber + "</p>");
-                    sb.Append("<h4>Order Details:</h4><ul>");
+                    sb.Append("<p>Thank you for your order with <strong>Lovely Fish Aquarium</strong>. We are pleased to confirm that we have received your order successfully.</p>");
 
+                    sb.Append("<h4>Order Details:</h4><ul>");
                     foreach (var item in cartItems)
                         sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {item.Product.Price:C}</li>");
                     sb.Append("</ul>");
+
                     sb.Append($"<p>Original Total: {originalTotal:C}</p>");
                     sb.Append($"<p>Discount: {discount:C}</p>");
                     sb.Append($"<p><strong>Final Payment: {finalTotal:C}</strong></p>");
+
+                    sb.Append("<p>If you prefer to pick up your order, we will provide our store address. You may pay in cash or make a bank transfer using the following details:</p>");
+                    sb.Append("<p><strong>Bank:</strong> " + emailSettings.Value.BankName + "<br>");
+                    sb.Append("<strong>Account Name:</strong> " + emailSettings.Value.AccountName + "<br>");
+                    sb.Append("<strong>Account Number:</strong> " + emailSettings.Value.AccountNumber + "</p>");
+
+                    sb.Append("<p>If you prefer courier delivery, we will email you shortly with the updated total including courier fees.</p>");
+
+                    //sb.Append($"<p><strong>Order Reference Number:</strong> {referenceNumber}</p>");
+                    sb.Append("<p><strong>Please put your name and OrderId as reference </p>");
+                    sb.Append("<p>Once your payment is confirmed, we will process and dispatch your order promptly. You can also track your order anytime in your account under <em>Orders</em>.</p>");
+                    sb.Append("<p>Thank you for choosing Lovely Fish Aquarium!</p>");
+
                     return sb.ToString();
                 }
 
@@ -258,16 +271,33 @@ namespace LovelyFish.Controllers
                 {
                     var sb = new StringBuilder();
                     sb.AppendLine($"Hi {name},");
-                    sb.AppendLine("Thank you for your order! Please make the payment via the following bank details:");
-                    sb.AppendLine("Bank: " + emailSettings.Value.BankName);
-                    sb.AppendLine("Account Name: " + emailSettings.Value.AccountName);
-                    sb.AppendLine("Account Number: " + emailSettings.Value.AccountNumber);
+                    sb.AppendLine();
+                    sb.AppendLine("Thank you for your order with Lovely Fish Aquarium. We are pleased to confirm that we have received your order successfully.");
+                    sb.AppendLine();
+                    
+                    sb.AppendLine();
                     sb.AppendLine("Order Details:");
                     foreach (var item in cartItems)
-                        sb.AppendLine($"{item.Product.Title} × {item.Quantity} - {item.Product.Price:C}");
+                        sb.AppendLine($"- {item.Product.Title} × {item.Quantity} - {item.Product.Price:C}");
+                    sb.AppendLine();
                     sb.AppendLine($"Original Total: {originalTotal:C}");
                     sb.AppendLine($"Discount: {discount:C}");
                     sb.AppendLine($"Final Payment: {finalTotal:C}");
+                    sb.AppendLine();
+                    sb.AppendLine("If you prefer to pick up your order, we will provide our store address. You may pay in cash or make a bank transfer using the following details:");
+                    sb.AppendLine($"Bank: {emailSettings.Value.BankName}");
+                    sb.AppendLine($"Account Name: {emailSettings.Value.AccountName}");
+                    sb.AppendLine($"Account Number: {emailSettings.Value.AccountNumber}");
+                    
+                    sb.AppendLine();
+                    sb.AppendLine("If you prefer courier delivery, we will email you shortly with the updated total including courier fees.");
+                    sb.AppendLine();
+                    sb.AppendLine("Please put your name and OrderId as reference");
+                    sb.AppendLine();
+                    sb.AppendLine("Once your payment is confirmed, we will process and dispatch your order promptly. You can also track your order anytime in your account under Orders.");
+                    sb.AppendLine();
+                    sb.AppendLine("Thank you for choosing Lovely Fish Aquarium!");
+
                     return sb.ToString();
                 }
 
@@ -306,7 +336,7 @@ namespace LovelyFish.Controllers
                 // ====== Send Emails ======
                 var userPayload = new
                 {
-                    sender = new { email = "lovelyfishaquarium@outlook.com", name = "LovelyFishAquarium" },
+                    sender = new { email = settings.FromEmail, name = settings.FromName },
                     to = new[] { new { email = user.Email, name = dto.CustomerName } },
                     subject = "Order Confirmation - LovelyFishAquarium",
                     htmlContent = BuildUserHtmlContent(dto.CustomerName),
@@ -317,8 +347,8 @@ namespace LovelyFish.Controllers
 
                 var adminPayload = new
                 {
-                    sender = new { email = "lovelyfishaquarium@outlook.com", name = "LovelyFishAquarium" },
-                    to = new[] { new { email = "lovelyfishaquarium@outlook.com", name = "Admin" } },
+                    sender = new { email = settings.FromEmail, name = settings.FromName },
+                    to = new[] { new { email = settings.AdminEmail, name = settings.AdminName } },
                     subject = "New Order Notification - LovelyFishAquarium",
                     htmlContent = BuildAdminHtmlContent(order),
                     textContent = BuildAdminTextContent(order)

@@ -6,29 +6,27 @@ using Microsoft.AspNetCore.Identity;
 using LovelyFish.API.Server.Data;
 using DotNetEnv;
 using LovelyFish.API.Server.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -------------------
 // Load .env file (for local development)
-// -------------------
-Env.Load(); // If no .env exists locally, it won't throw an error
+Env.Load(); 
 
-// -------------------
 // Configuration sources
-// -------------------
 // Read appsettings.json first, then environment variables
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddEnvironmentVariables();
 
-// -------------------
+
 // Inject EmailSettings from environment variables
-// -------------------
 builder.Services.Configure<EmailSettings>(options =>
 {
     options.BrevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
     options.FromEmail = Environment.GetEnvironmentVariable("FROM_EMAIL");
     options.FromName = Environment.GetEnvironmentVariable("FROM_NAME");
+    options.AdminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+    options.AdminName = Environment.GetEnvironmentVariable("ADMIN_NAME");
     options.BankName = Environment.GetEnvironmentVariable("BANK_NAME");
     options.AccountNumber = Environment.GetEnvironmentVariable("ACCOUNT_NUMBER");
     options.AccountName = Environment.GetEnvironmentVariable("ACCOUNT_NAME");
@@ -103,9 +101,7 @@ builder.Services.AddDbContext<LovelyFishContext>(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(finalConn, sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
-// -------------------
 // Identity configuration
-// -------------------
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -113,28 +109,70 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
+
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-        ? CookieSecurePolicy.SameAsRequest
+        ? CookieSecurePolicy.None // Use None in the development environment to avoid iPhone rejecting cookies over HTTP; otherwise, use CookieSecurePolicy.Always
         : CookieSecurePolicy.Always;
+
     options.Cookie.Name = ".LovelyFish.AuthCookie";
-    options.Cookie.SameSite = SameSiteMode.None;
+
+    // ?? 修改 SameSite 兼容开发环境手机登录
+    options.Cookie.SameSite = builder.Environment.IsDevelopment()
+        ? SameSiteMode.Lax          // ?? 开发环境 Lax
+        : SameSiteMode.None;        // ?? 生产环境 None
+
     options.ExpireTimeSpan = TimeSpan.FromHours(1);
     options.SlidingExpiration = true;
     options.LoginPath = "/api/account/login";
     options.LogoutPath = "/api/account/logout";
 
-    // API request login redirect handling
+    // ?? 新增日志记录和 API 返回 401 修复
+    options.Events.OnValidatePrincipal = context =>
+    {
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+        if (!context.Principal.Identity.IsAuthenticated)
+        {
+            logger.LogWarning("Cookie validation failed for user {User}", context.Principal?.Identity?.Name ?? "Unknown");
+        }
+        return Task.CompletedTask;
+    };
+
+    // ?? 修复 OnRedirectToLogin，不依赖 StatusCode==200
     options.Events.OnRedirectToLogin = context =>
     {
-        if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == 200)
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+
+        if (context.Request.Path.StartsWithSegments("/api"))
         {
-            context.Response.StatusCode = 401;
+            // ?? API 请求未认证 → 返回 401
+            logger.LogWarning("API request unauthorized: {Path}", context.Request.Path);
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return Task.CompletedTask;
         }
+
+        // 页面请求 → 重定向到登录页
+        logger.LogInformation("Redirecting to login page: {Path}", context.Request.Path);
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+
+    // ?? 可选：API 权限不足返回 403
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning("Access denied for path: {Path}", context.Request.Path);
+
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+
         context.Response.Redirect(context.RedirectUri);
         return Task.CompletedTask;
     };
 });
+
 
 
 
@@ -165,6 +203,7 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "LovelyFish API V1");
     c.RoutePrefix = "swagger"; // Swagger UI URL: /swagger
+
 });
 
 app.UseHttpsRedirection();
@@ -195,8 +234,9 @@ using (var scope = app.Services.CreateScope())
     Console.WriteLine("[Seed] Product seeder started");
     DataSeeder.Seed(services);
 
+    var emailSettings = services.GetRequiredService<IOptions<EmailSettings>>();
     Console.WriteLine("[Seed] IdentitySeeder started");
-    await IdentitySeeder.SeedAdminAsync(services);
+    await IdentitySeeder.SeedAdminAsync(services,emailSettings);
 }
 
 app.Run();

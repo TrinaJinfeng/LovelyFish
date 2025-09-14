@@ -28,6 +28,8 @@ namespace LovelyFish.API.Data
         // Order items table
         public DbSet<OrderItem> OrderItems { get; set; }
 
+        public DbSet<FishOwner> FishOwners { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

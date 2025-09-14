@@ -136,6 +136,7 @@ namespace LovelyFish.API.Server.Controllers
                 Status = o.Status ?? "pending",
                 Courier = o.Courier ?? "",
                 TrackingNumber = o.TrackingNumber ?? "",
+                DeliveryMethod = o.DeliveryMethod ?? "pickup",
                 OrderItems = o.OrderItems.Select(oi => new OrderItemDto
                 {
                     Id = oi.Id,

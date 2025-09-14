@@ -102,6 +102,7 @@ namespace LovelyFish.API.Server.Controllers
                     status = o.Status,
                     courier = o.Courier,
                     trackingNumber = o.TrackingNumber,
+                    deliveryMethod = o.DeliveryMethod ?? "pickup",
                     createdAt = o.CreatedAt
                 })
                 .ToListAsync();

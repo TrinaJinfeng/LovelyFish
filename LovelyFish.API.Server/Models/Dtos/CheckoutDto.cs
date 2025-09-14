@@ -8,7 +8,10 @@ namespace LovelyFish.API.Server.Dtos
         // Customer's full name
         public string CustomerName { get; set; } = string.Empty;
 
-        // Shipping address provided by customer
+        // Delivery method: "pickup" or "courier"
+        public string DeliveryMethod { get; set; } = "pickup";
+
+        // Shipping address (only required if courier)
         public string ShippingAddress { get; set; } = string.Empty;
 
         // Phone number entered in ConfirmOrderPage

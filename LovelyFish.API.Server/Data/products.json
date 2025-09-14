@@ -1,7 +1,7 @@
 ﻿[
     {
 
-        "name": "Model: wp-350s",
+        "name": "WP-350S 3000L/H",
         "price": 55,
         "output": 3000,
         "wattage": 60,
@@ -12,7 +12,7 @@
 
     {
 
-        "name": "Model: 100W",
+        "name": "Ceramic Tube Heater LE-500W",
         "price": 18,
         "output": 0,
         "wattage": 100,
@@ -24,7 +24,7 @@
 
     {
 
-        "name": "Model: wp-3300C",
+        "name": "LED-3300C 3in1 Large submersible filter pump",
         "price": 40,
         "output": 2000,
         "wattage": 25,
@@ -35,8 +35,8 @@
 
     {
 
-        "name": "Model: wp-948",
-        "price": 40,
+        "name": "Air pump 4 outlets SB-988 12W",
+        "price": 60,
         "output": 3,
         "wattage": 8,
         "image": "../assets/uploads/hm.jpg",
@@ -46,7 +46,7 @@
 
     {
 
-        "name": "Model: yp-100",
+        "name": "Double heads wave maker YP-201",
         "price": 20,
         "output": 4,
         "wattage": 12,
@@ -57,7 +57,7 @@
 
     {
 
-        "name": "Filtration Combo",
+        "name": "Mixed Filtration 500g/bag",
         "price": 20,
         "output": 0,
         "wattage": 0,
@@ -68,8 +68,8 @@
 
     {
 
-        "name": "Model: 30T",
-        "price": 20,
+        "name": "Led Crystal Aquarium Light 35T-02",
+        "price": 40,
         "output": 0,
         "wattage": 12,
         "image": "../assets/uploads/hm.jpg",
@@ -79,8 +79,8 @@
 
     {
 
-        "name": "XY-380",
-        "price": 8,
+        "name": "Corner Sponge Filter XY-2010",
+        "price": 10,
         "output": 0,
         "wattage": 0,
         "image": "../assets/uploads/hm.jpg",
@@ -90,7 +90,7 @@
 
     {
 
-        "name": "101M brush",
+        "name": "Air stone 8cm",
         "price": 20,
         "output": 0,
         "wattage": 0,

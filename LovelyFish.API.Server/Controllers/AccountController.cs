@@ -94,6 +94,7 @@ namespace LovelyFish.API.Server.Controllers
 
             return Ok(new
             {
+                id = user.Id,
                 name = user.Name,
                 email = user.Email,
                 phone = user.PhoneNumber,

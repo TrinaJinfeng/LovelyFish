@@ -33,7 +33,9 @@
         
         public string TrackingNumber { get; set; } = string.Empty; // Tracking number provided by courier
 
-        
+        public string DeliveryMethod { get; set; } = "pickup";
+
+
         public List<OrderItemDto> OrderItems { get; set; } = new List<OrderItemDto>(); // List of order items; initialized to avoid null references
     }
 }

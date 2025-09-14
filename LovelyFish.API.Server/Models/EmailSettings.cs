@@ -7,11 +7,11 @@
         public string BrevoApiKey { get; set; }
 
         // Default sender email and name
-        public string FromEmail { get; set; } = "lovelyfishaquarium@outlook.com";
+        public string FromEmail { get; set; } = "info@lovelyfishaquarium.co.nz";
         public string FromName { get; set; } = "LovelyFishAquarium";
 
         // Alternative sender info (optional, can be same as FromEmail/FromName)
-        public string SenderEmail { get; set; } = "lovelyfishaquarium@outlook.com";
+        public string SenderEmail { get; set; } = "info@lovelyfishaquarium.co.nz";
         public string SenderName { get; set; } = "LovelyFishAquarium";
 
         // Frontend and backend URLs for generating links
