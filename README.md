@@ -119,6 +119,18 @@ dotnet restore
 - **Production / Azure:** Backend must allow frontend URL via CORS, otherwise requests are blocked.
 - **Solution:** Configure backend CORS to allow the deployed frontend URL.
 
+### 6. Authentication Differences
+
+Cookie-based Authentication: Frontend submits correct username & password → Backend API authenticates → Backend returns SessionID Cookie → Frontend stores Cookie → Frontend requests /account/me.
+- **Desktop:** Cookie sent successfully ✅ User info returned.
+- **iPhone Safari:** Cookie blocked ❌ User info not returned.
+- **Solution:** Switch to token authentication (JWT). Frontend stores token and sends it via Authorization: Bearer <token> header, ensuring cross-platform consistency.
+<img src="LovelyFish.API.Server/wwwroot/uploads/cookie1.png" alt="cookie1.png" width="600">
+Plan to replaced with JWT:
+<img src="LovelyFish.API.Server/wwwroot/uploads/JWT.png" alt="JWT.png" width="600">
+<img src="LovelyFish.API.Server/wwwroot/uploads/JWT3.png" alt="JWT3.png" width="700">
+
+
 > ⚠️ Note: Never commit real credentials to GitHub. Always use environment variables or a secret manager for sensitive information.
 
 ---
