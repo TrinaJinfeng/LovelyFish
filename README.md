@@ -105,7 +105,7 @@ dotnet restore
 - **Local:** Images uploaded to local `wwwroot/images`, accessed normally.
 - **Azure Blob Storage:** Directly using local paths causes 404 errors.
 - **Solution:** Backend returns full Blob URLs; frontend uses these URLs directly to ensure images display correctly.
-- ![image-works](wwwroot/uploads/image-works.png)
+- ![image-works](LovelyFish.API.Server/wwwroot/uploads/image-works.png)
 
 ### 4. Email Service Differences
 - **Local:** Used SMTP test account, emails sent successfully.
