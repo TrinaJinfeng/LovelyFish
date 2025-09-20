@@ -8,6 +8,9 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using System.Text;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace LovelyFish.API.Server.Controllers
 {
@@ -16,14 +19,19 @@ namespace LovelyFish.API.Server.Controllers
     public class AccountController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        //private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly JwtSettings _jwtSettings;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager)
+            //SignInManager<ApplicationUser> signInManager,
+            IOptions<JwtSettings> jwtSettings)
         {
             _userManager = userManager;
-            _signInManager = signInManager;
+            //_signInManager = signInManager;
+            _jwtSettings = jwtSettings.Value; // 从配置或 .env 获取 JWT_SECRET
+
+            // 后续生成 JWT 时直接用 _jwtSettings.Secret
         }
 
         // POST api/account/register
@@ -52,42 +60,57 @@ namespace LovelyFish.API.Server.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest model)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            // False means the login session will not persist after closing the browser
-            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, false, false);
-
-            if (!result.Succeeded)
-            {
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
                 return Unauthorized(new { message = "Invalid username or password" });
-            }
 
-            return Ok(new { message = "Login successful" });
+            // 创建 JWT
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Name, user.UserName ?? ""),
+                new Claim(ClaimTypes.Email, user.Email ?? "")
+            };
+
+            // 可以加角色
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+                claims.Add(new Claim(ClaimTypes.Role, role));
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpireMinutes),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var jwtToken = tokenHandler.WriteToken(token);
+
+            return Ok(new { token = jwtToken });
         }
 
         // POST api/account/logout
         [HttpPost("logout")]
         [Authorize] // Must be logged in to call
-        public async Task<IActionResult> Logout()
+        public IActionResult Logout()
         {
-            // Clear authentication cookie
-            await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-
-            // Alternatively, use SignInManager’s SignOut method (equivalent)
-            // await _signInManager.SignOutAsync();
-
+            // JWT 不需要服务器操作，前端删除 token 即可
             return Ok(new { message = "Logged out successfully" });
         }
 
-        // GET api/account/me
+        // Get current user 
         [HttpGet("me")]
         [Authorize] // Must be an authenticated user
         public async Task<IActionResult> Me()
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-                return Unauthorized();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Unauthorized();
 
             // Retrieve assigned roles
             var roles = await _userManager.GetRolesAsync(user);
@@ -109,22 +132,18 @@ namespace LovelyFish.API.Server.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest model)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-                return Unauthorized();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Unauthorized();
 
             user.Name = model.Name;
             user.PhoneNumber = model.Phone;
             user.Address = model.Address;
 
             var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-            {
-                return BadRequest(result.Errors);
-            }
+            if (!result.Succeeded) return BadRequest(result.Errors);
 
             return Ok(new { message = "Profile updated successfully" });
         }

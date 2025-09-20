@@ -7,6 +7,10 @@ using LovelyFish.API.Server.Models.Dtos;
 using LovelyFish.API.Data;
 using Microsoft.Extensions.Options;
 using System.Text;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+
 
 namespace LovelyFish.API.Server.Controllers
 {
@@ -20,22 +24,22 @@ namespace LovelyFish.API.Server.Controllers
     {
         private readonly LovelyFishContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        
 
         public AdminController(
                                LovelyFishContext context,
-                               UserManager<ApplicationUser> userManager,
-                               SignInManager<ApplicationUser> signInManager)
+                               UserManager<ApplicationUser> userManager
+                               )
         {
             _context = context;
             _userManager = userManager;
-            _signInManager = signInManager;
+            
         }
 
         // POST api/admin/login
         [AllowAnonymous]
         [HttpPost("login")]
-        public async Task<IActionResult> Login(AdminLoginRequest model)
+        public async Task<IActionResult> Login(AdminLoginRequest model, [FromServices] IOptions<JwtSettings> jwtSettings)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
@@ -45,30 +49,52 @@ namespace LovelyFish.API.Server.Controllers
             if (!await _userManager.IsInRoleAsync(user, "Admin"))
                 return Unauthorized(new { message = "Not an admin" });
 
-            var result = await _signInManager.PasswordSignInAsync(user, model.Password, false, false);
-            if (!result.Succeeded) return Unauthorized(new { message = "Invalid credentials" });
+            if (!await _userManager.CheckPasswordAsync(user, model.Password))
+                return Unauthorized(new { message = "Invalid credentials" });
 
-            return Ok(new { message = "Admin login successful" });
+            // 生成 JWT
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(jwtSettings.Value.Secret);
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Name, user.UserName ?? ""),
+                new Claim(ClaimTypes.Email, user.Email ?? "")
+            };
+
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+                claims.Add(new Claim(ClaimTypes.Role, role));
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(jwtSettings.Value.ExpireMinutes),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var jwtToken = tokenHandler.WriteToken(token);
+
+            return Ok(new { token = jwtToken });
+        }
+
+        // POST api/admin/logout
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            // JWT 无状态，前端删除 token 即可
+            return Ok(new { message = "Logged out successfully" });
         }
 
         // GET api/admin/me
         [HttpGet("me")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Me()
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
             return Ok(new { email = user.Email, name = user.Name });
-        }
-
-        // POST api/admin/logout
-        [HttpPost("logout")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Logout()
-        {
-            await _signInManager.SignOutAsync();
-            return Ok(new { message = "Logged out" });
         }
 
         // POST api/admin/forgot-password
@@ -154,6 +180,10 @@ namespace LovelyFish.API.Server.Controllers
 
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
+
+            //var isOldPasswordValid = await _userManager.CheckPasswordAsync(user, model.CurrentPassword);
+            //if (!isOldPasswordValid)
+            //    return BadRequest(new { message = "Current password is incorrect" });
 
             var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
             if (!result.Succeeded) return BadRequest(result.Errors);
