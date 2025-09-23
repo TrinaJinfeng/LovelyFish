@@ -7,6 +7,8 @@ using LovelyFish.API.Server.Models.Dtos;
 using LovelyFish.API.Data;
 using Microsoft.Extensions.Options;
 using System.Text;
+using LovelyFish.API.Server.Services;
+using System.Text.RegularExpressions;
 
 namespace LovelyFish.API.Server.Controllers
 {
@@ -20,16 +22,16 @@ namespace LovelyFish.API.Server.Controllers
     {
         private readonly LovelyFishContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ITokenService _tokenService;
 
         public AdminController(
                                LovelyFishContext context,
                                UserManager<ApplicationUser> userManager,
-                               SignInManager<ApplicationUser> signInManager)
+                               ITokenService tokenService)
         {
             _context = context;
             _userManager = userManager;
-            _signInManager = signInManager;
+            _tokenService = tokenService;
         }
 
         // POST api/admin/login
@@ -45,10 +47,23 @@ namespace LovelyFish.API.Server.Controllers
             if (!await _userManager.IsInRoleAsync(user, "Admin"))
                 return Unauthorized(new { message = "Not an admin" });
 
-            var result = await _signInManager.PasswordSignInAsync(user, model.Password, false, false);
-            if (!result.Succeeded) return Unauthorized(new { message = "Invalid credentials" });
+            if (!await _userManager.CheckPasswordAsync(user, model.Password))
+                return Unauthorized(new { message = "Invalid credentials" });
 
-            return Ok(new { message = "Admin login successful" });
+            // ✅ 这里传 userManager 进去
+            var token = await _tokenService.GenerateToken(user, _userManager);
+
+            return Ok(new
+            {
+                message = "Admin login successful",
+                token,
+                user = new
+                {
+                    id = user.Id,
+                    email = user.Email,
+                    name = user.Name
+                }
+            });
         }
 
         // GET api/admin/me
@@ -63,11 +78,11 @@ namespace LovelyFish.API.Server.Controllers
         }
 
         // POST api/admin/logout
+        // For JWT, frontend should remove the token
         [HttpPost("logout")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Logout()
-        {
-            await _signInManager.SignOutAsync();
+        public IActionResult Logout()
+        {           
             return Ok(new { message = "Logged out" });
         }
 
@@ -152,8 +167,18 @@ namespace LovelyFish.API.Server.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
+            // Validate new password complexity
+            var passwordRegex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$");
+            if (!passwordRegex.IsMatch(model.NewPassword))
+            {
+                return BadRequest(new { message = "New password must be at least 8 characters long and include uppercase, lowercase, number, and special character." });
+            }
+
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
+
+            var isOldPasswordValid = await _userManager.CheckPasswordAsync(user, model.CurrentPassword);
+            if (!isOldPasswordValid) return BadRequest(new { message = "Current password is incorrect." });
 
             var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
             if (!result.Succeeded) return BadRequest(result.Errors);

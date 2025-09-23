@@ -7,8 +7,18 @@ using LovelyFish.API.Server.Data;
 using DotNetEnv;
 using LovelyFish.API.Server.Services;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// -------------------
+// 临时禁用 Azure Blob Trace Listener
+// -------------------
+builder.Logging.ClearProviders(); // 移除默认日志提供者
+builder.Logging.AddConsole();     // 保留控制台日志
+
 
 // Load .env file (for local development)
 Env.Load(); 
@@ -35,11 +45,10 @@ builder.Services.Configure<EmailSettings>(options =>
 
 });
 
-// Register EmailService as singleton
+// inject services
 builder.Services.AddSingleton<EmailService>();
-
-// Register BlobService (file upload service) as singleton
 builder.Services.AddSingleton<BlobService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 
 // -------------------
 // Controllers and JSON options
@@ -67,32 +76,19 @@ var dbName = Environment.GetEnvironmentVariable("AZURE_SQL_DB");
 var dbUser = Environment.GetEnvironmentVariable("AZURE_SQL_USER");
 var dbPass = Environment.GetEnvironmentVariable("AZURE_SQL_PASSWORD");
 
-// Blob storage settings
-builder.Services.Configure<BlobSettings>(options =>
-{
-    options.ConnectionString = Environment.GetEnvironmentVariable("AZURE_BLOB_CONNECTION_STRING");
-    options.ContainerName = "uploads";
-});
-
-var frontendBaseUrl = builder.Configuration["FRONTEND_BASE_URL"];
-
-
+Console.WriteLine("=== Environment Variables ===");
+Console.WriteLine($"AZURE_SQL_SERVER: {dbServer}");
+Console.WriteLine($"AZURE_SQL_DB:     {dbName}");
+Console.WriteLine($"AZURE_SQL_USER:   {dbUser}");
+Console.WriteLine("============================");
 
 // Build final connection string
-string finalConn;
-if (!string.IsNullOrEmpty(dbUser) && !string.IsNullOrEmpty(dbPass))
-{
-    finalConn = rawConn
+string finalConn = rawConn
         .Replace("%AZURE_SQL_SERVER%", dbServer)
         .Replace("%AZURE_SQL_DB%", dbName)
         .Replace("%AZURE_SQL_USER%", dbUser)
         .Replace("%AZURE_SQL_PASSWORD%", dbPass);
-}
-else
-{
-    // Fallback to Windows authentication if user/pass not provided
-    finalConn = $"Server={dbServer};Database={dbName};Trusted_Connection=True;Encrypt=False;";
-}
+
 
 // Register DbContexts
 builder.Services.AddDbContext<LovelyFishContext>(options =>
@@ -101,80 +97,82 @@ builder.Services.AddDbContext<LovelyFishContext>(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(finalConn, sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
-// Identity configuration
+// Identity configuration (only JWT)
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.ConfigureApplicationCookie(options =>
+// JWT 配置
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+
+// Configure JwtSettings
+builder.Services.Configure<JwtSettings>(options =>
 {
-    options.Cookie.HttpOnly = true;
+    options.Secret = jwtSecret ?? throw new InvalidOperationException("JWT_SECRET environment variable is required");
+    options.Issuer = jwtIssuer ?? throw new InvalidOperationException("JWT_ISSUER environment variable is required");
+    options.Audience = jwtAudience ?? throw new InvalidOperationException("JWT_AUDIENCE environment variable is required");
+    options.ExpiryMinutes = 60; // Default expiry time
+});
 
-    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-        ? CookieSecurePolicy.None // Use None in the development environment to avoid iPhone rejecting cookies over HTTP; otherwise, use CookieSecurePolicy.Always
-        : CookieSecurePolicy.Always;
+//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//    .AddJwtBearer(options =>
+//    {
+//        options.TokenValidationParameters = new TokenValidationParameters
+//        {
+//            ValidateIssuer = true,
+//            ValidateAudience = true,
+//            ValidateLifetime = true,
+//            ValidateIssuerSigningKey = true,
+//            ValidIssuer = jwtIssuer,
+//            ValidAudience = jwtAudience,
+//            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
 
-    options.Cookie.Name = ".LovelyFish.AuthCookie";
+//        };
+//    });
 
-    // ?? 修改 SameSite 兼容开发环境手机登录
-    options.Cookie.SameSite = builder.Environment.IsDevelopment()
-        ? SameSiteMode.Lax          // ?? 开发环境 Lax
-        : SameSiteMode.None;        // ?? 生产环境 None
-
-    options.ExpireTimeSpan = TimeSpan.FromHours(1);
-    options.SlidingExpiration = true;
-    options.LoginPath = "/api/account/login";
-    options.LogoutPath = "/api/account/logout";
-
-    // ?? 新增日志记录和 API 返回 401 修复
-    options.Events.OnValidatePrincipal = context =>
+//    });
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // ?? 必须加上这行
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-        if (!context.Principal.Identity.IsAuthenticated)
-        {
-            logger.LogWarning("Cookie validation failed for user {User}", context.Principal?.Identity?.Name ?? "Unknown");
-        }
-        return Task.CompletedTask;
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
     };
 
-    // ?? 修复 OnRedirectToLogin，不依赖 StatusCode==200
-    options.Events.OnRedirectToLogin = context =>
+    // ?? 阻止自动跳转 /Account/Login
+    options.Events = new JwtBearerEvents
     {
-        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-
-        if (context.Request.Path.StartsWithSegments("/api"))
+        OnChallenge = context =>
         {
-            // ?? API 请求未认证 → 返回 401
-            logger.LogWarning("API request unauthorized: {Path}", context.Request.Path);
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
+            context.HandleResponse();
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+            return context.Response.WriteAsync("{\"message\": \"Unauthorized\"}");
         }
-
-        // 页面请求 → 重定向到登录页
-        logger.LogInformation("Redirecting to login page: {Path}", context.Request.Path);
-        context.Response.Redirect(context.RedirectUri);
-        return Task.CompletedTask;
-    };
-
-    // ?? 可选：API 权限不足返回 403
-    options.Events.OnRedirectToAccessDenied = context =>
-    {
-        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogWarning("Access denied for path: {Path}", context.Request.Path);
-
-        if (context.Request.Path.StartsWithSegments("/api"))
-        {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            return Task.CompletedTask;
-        }
-
-        context.Response.Redirect(context.RedirectUri);
-        return Task.CompletedTask;
     };
 });
 
 
+// Blob storage settings
+builder.Services.Configure<BlobSettings>(options =>
+{
+    options.ConnectionString = Environment.GetEnvironmentVariable("AZURE_BLOB_CONNECTION_STRING");
+    options.ContainerName = "uploads";
+});
 
+var frontendBaseUrl = builder.Configuration["FRONTEND_BASE_URL"];
 
 //CORS configuration(local + Azure front-end)
 //-------------------

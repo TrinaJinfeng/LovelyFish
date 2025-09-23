@@ -59,7 +59,7 @@ namespace LovelyFish.API.Server.Controllers
                 orderCount = orders.Count(o => o.UserId == u.Id)
             }).ToList();
 
-            return Ok(new { items = users, totalPages });
+            return Ok(new { items = users, totalPages, totalItems });
         }
 
         // PUT api/admin/users/{id}/active

@@ -1,13 +1,14 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-using LovelyFish.API.Server.Models;  // ApplicationUser
-using Microsoft.AspNetCore.Authentication;
+using LovelyFish.API.Server.Models;  
+//using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using System.Text;
+using LovelyFish.API.Server.Services;
 
 namespace LovelyFish.API.Server.Controllers
 {
@@ -16,14 +17,15 @@ namespace LovelyFish.API.Server.Controllers
     public class AccountController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ITokenService _tokenService;
+        
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager)
+            ITokenService tokenService)
         {
             _userManager = userManager;
-            _signInManager = signInManager;
+            _tokenService = tokenService;
         }
 
         // POST api/account/register
@@ -45,7 +47,10 @@ namespace LovelyFish.API.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            return Ok(new { message = "User registered successfully" });
+            // generate token and return when register successfully
+            var token = await _tokenService.GenerateToken(user, _userManager);
+
+            return Ok(new { message = "User registered successfully", token });
         }
 
         // POST api/account/login
@@ -55,28 +60,32 @@ namespace LovelyFish.API.Server.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // False means the login session will not persist after closing the browser
-            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, false, false);
-
-            if (!result.Succeeded)
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
             {
-                return Unauthorized(new { message = "Invalid username or password" });
+                return Unauthorized(new { message = "Invalid email or password" });
             }
 
-            return Ok(new { message = "Login successful" });
+            var token = await _tokenService.GenerateToken(user, _userManager);
+
+            return Ok(new
+            {
+                token,
+                user = new
+                {
+                    id = user.Id,
+                    name = user.Name,
+                    email = user.Email,
+                    roles = await _userManager.GetRolesAsync(user)
+                }
+            });
         }
 
         // POST api/account/logout
         [HttpPost("logout")]
-        [Authorize] // Must be logged in to call
-        public async Task<IActionResult> Logout()
-        {
-            // Clear authentication cookie
-            await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-
-            // Alternatively, use SignInManager’s SignOut method (equivalent)
-            // await _signInManager.SignOutAsync();
-
+        [Authorize] 
+        public IActionResult Logout()
+        {          
             return Ok(new { message = "Logged out successfully" });
         }
 
@@ -252,7 +261,9 @@ namespace LovelyFish.API.Server.Controllers
     // Request models
     public class RegisterRequest
     {
+        [Required]
         public string Email { get; set; } = string.Empty;
+        [Required]
         public string Password { get; set; } = string.Empty;
     }
 
