@@ -34,6 +34,8 @@ namespace LovelyFish.API.Server.Controllers
             _tokenService = tokenService;
         }
 
+        // Admin Authentication
+
         // POST api/admin/login
         [AllowAnonymous]
         [HttpPost("login")]
@@ -44,13 +46,15 @@ namespace LovelyFish.API.Server.Controllers
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null) return Unauthorized(new { message = "Invalid credentials" });
 
+            // Ensure user actually has Admin role
             if (!await _userManager.IsInRoleAsync(user, "Admin"))
                 return Unauthorized(new { message = "Not an admin" });
 
+            //Check the password
             if (!await _userManager.CheckPasswordAsync(user, model.Password))
                 return Unauthorized(new { message = "Invalid credentials" });
 
-            // ✅ 这里传 userManager 进去
+            // Generate Jwt token
             var token = await _tokenService.GenerateToken(user, _userManager);
 
             return Ok(new
@@ -69,6 +73,8 @@ namespace LovelyFish.API.Server.Controllers
         // GET api/admin/me
         [HttpGet("me")]
         [Authorize(Roles = "Admin")]
+
+        //Returns logged-in admin profile info
         public async Task<IActionResult> Me()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -78,7 +84,7 @@ namespace LovelyFish.API.Server.Controllers
         }
 
         // POST api/admin/logout
-        // For JWT, frontend should remove the token
+        // With JWT, logout just means frontend deletes the token
         [HttpPost("logout")]
         [Authorize(Roles = "Admin")]
         public IActionResult Logout()
@@ -86,9 +92,13 @@ namespace LovelyFish.API.Server.Controllers
             return Ok(new { message = "Logged out" });
         }
 
+        // Password Management
+
         // POST api/admin/forgot-password
         [AllowAnonymous]
         [HttpPost("forgot-password")]
+
+        //Sends password reset link to admin email using Brevo API
         public async Task<IActionResult> ForgotPassword(AdminForgotPasswordRequest model, [FromServices] IOptions<EmailSettings> emailSettings)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -97,6 +107,7 @@ namespace LovelyFish.API.Server.Controllers
             if (user == null || !await _userManager.IsInRoleAsync(user, "Admin"))
                 return BadRequest(new { message = "Invalid request" });
 
+            // Generate reset token
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
             // Generate reset link
@@ -146,6 +157,8 @@ namespace LovelyFish.API.Server.Controllers
         // POST api/admin/reset-password
         [AllowAnonymous]
         [HttpPost("reset-password")]
+
+        // Resets admin password using reset token
         public async Task<IActionResult> ResetPassword(AdminResetPasswordRequest model)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -163,6 +176,8 @@ namespace LovelyFish.API.Server.Controllers
         // POST api/admin/change-password
         [HttpPost("change-password")]
         [Authorize(Roles = "Admin")]
+
+        // Allows logged-in admin to change password (with old password verification + complexity check)
         public async Task<IActionResult> ChangePassword(AdminChangePasswordRequest model)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -186,8 +201,12 @@ namespace LovelyFish.API.Server.Controllers
             return Ok(new { message = "Password changed successfully" });
         }
 
+        // User Management
+
         // GET api/admin/users
         [HttpGet]
+
+        // Returns all users (basic info + active status)
         public IActionResult GetUsers()
         {
             var users = _userManager.Users.Select(u => new {
@@ -203,6 +222,8 @@ namespace LovelyFish.API.Server.Controllers
 
         // PUT api/admin/users/{id}/active
         [HttpPut("{id}/active")]
+
+        // Enable or disable a user account
         public async Task<IActionResult> ToggleActive(string id, [FromBody] bool active)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -223,6 +244,8 @@ namespace LovelyFish.API.Server.Controllers
 
         // GET api/admin/orders - order management in admin panel
         [HttpGet("orders")]
+
+        // Returns paginated orders with search support
         public IActionResult GetOrders([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             // Query orders from database
@@ -276,6 +299,8 @@ namespace LovelyFish.API.Server.Controllers
 
         // GET api/admin/orders/{id} - view order details
         [HttpGet("orders/{id}")]
+
+        // Returns single order detail
         public IActionResult GetOrderById(int id)
         {
             var order = _context.Orders

@@ -28,6 +28,7 @@ namespace LovelyFish.API.Server.Controllers
             _tokenService = tokenService;
         }
 
+        //Register a new user
         // POST api/account/register
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest model)
@@ -35,24 +36,28 @@ namespace LovelyFish.API.Server.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Create new ApplicationUser with email as username
             var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
 
+            // Save user with hashed password
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (!result.Succeeded)
             {
+                // Return error messages if failed
                 foreach (var error in result.Errors)
                     ModelState.AddModelError(string.Empty, error.Description);
 
                 return BadRequest(ModelState);
             }
 
-            // generate token and return when register successfully
+            // Generate token and return when register successfully
             var token = await _tokenService.GenerateToken(user, _userManager);
 
             return Ok(new { message = "User registered successfully", token });
         }
 
+        //Login and get Jwt token
         // POST api/account/login
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest model)
@@ -60,12 +65,16 @@ namespace LovelyFish.API.Server.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Find user by email
             var user = await _userManager.FindByEmailAsync(model.Email);
+
+            // Validate password
             if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
             {
                 return Unauthorized(new { message = "Invalid email or password" });
             }
 
+            // Generate JWT token for authenticated user
             var token = await _tokenService.GenerateToken(user, _userManager);
 
             return Ok(new
@@ -81,6 +90,7 @@ namespace LovelyFish.API.Server.Controllers
             });
         }
 
+        //Logout (JWT cannot be invalidated directly, client just discards token)
         // POST api/account/logout
         [HttpPost("logout")]
         [Authorize] 
@@ -89,16 +99,17 @@ namespace LovelyFish.API.Server.Controllers
             return Ok(new { message = "Logged out successfully" });
         }
 
+        // Get current user info
         // GET api/account/me
         [HttpGet("me")]
-        [Authorize] // Must be an authenticated user
+        [Authorize] // Must be logged in 
         public async Task<IActionResult> Me()
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
                 return Unauthorized();
 
-            // Retrieve assigned roles
+            // Get roles assigned to user
             var roles = await _userManager.GetRolesAsync(user);
 
             return Ok(new
@@ -108,11 +119,12 @@ namespace LovelyFish.API.Server.Controllers
                 email = user.Email,
                 phone = user.PhoneNumber,
                 address = user.Address,
-                newUserUsed = user.NewUserCouponUsed,//Check user is new or not
+                newUserUsed = user.NewUserCouponUsed,//Check if the user has used newUserCounpon
                 roles = roles // Return roles array
             });
         }
 
+        // Update user profile (name, phone, address)
         // POST api/account/update-profile
         [HttpPost("update-profile")]
         [Authorize]
@@ -125,6 +137,7 @@ namespace LovelyFish.API.Server.Controllers
             if (user == null)
                 return Unauthorized();
 
+            // Update user info
             user.Name = model.Name;
             user.PhoneNumber = model.Phone;
             user.Address = model.Address;
@@ -138,6 +151,7 @@ namespace LovelyFish.API.Server.Controllers
             return Ok(new { message = "Profile updated successfully" });
         }
 
+        // Send password reset link via email
         // POST api/account/forgot-password
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest model, [FromServices] IOptions<EmailSettings> emailSettings)
@@ -152,6 +166,7 @@ namespace LovelyFish.API.Server.Controllers
                 return Ok(new { message = "If that email exists, a reset link has been sent" });
             }
 
+            // Generate reset token
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var resetLink = $"{emailSettings.Value.FrontendBaseUrl}/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
 
@@ -202,6 +217,7 @@ namespace LovelyFish.API.Server.Controllers
             return Ok(new { message = "If that email exists, a reset link has been sent" });
         }
 
+        // Reset password using token
         // POST api/account/reset-password
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest model)
@@ -213,6 +229,7 @@ namespace LovelyFish.API.Server.Controllers
             if (user == null)
                 return BadRequest(new { message = "Invalid request" });
 
+            // Validate token and reset password
             var result = await _userManager.ResetPasswordAsync(user, model.Token, model.NewPassword);
 
             if (!result.Succeeded)
@@ -223,6 +240,7 @@ namespace LovelyFish.API.Server.Controllers
             return Ok(new { message = "Password has been reset successfully" });
         }
 
+        // Change password for authenticated user
         // POST api/account/change-password
         [HttpPost("change-password")]
         [Authorize]
@@ -242,12 +260,14 @@ namespace LovelyFish.API.Server.Controllers
             if (user == null)
                 return Unauthorized();
 
+            // Verify old password
             var isOldPasswordValid = await _userManager.CheckPasswordAsync(user, model.OldPassword);
             if (!isOldPasswordValid)
             {
                 return BadRequest(new { message = "Current password is incorrect." });
             }
 
+            // Change password
             var result = await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
             if (!result.Succeeded)
             {
@@ -258,7 +278,7 @@ namespace LovelyFish.API.Server.Controllers
         }
     }
 
-    // Request models
+    // Request DTOs (Data Transfer Objects)
     public class RegisterRequest
     {
         [Required]

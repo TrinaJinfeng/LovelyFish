@@ -14,10 +14,10 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // -------------------
-// 临时禁用 Azure Blob Trace Listener
+// Temporarily disable Azure Blob Trace Listener
 // -------------------
-builder.Logging.ClearProviders(); // 移除默认日志提供者
-builder.Logging.AddConsole();     // 保留控制台日志
+builder.Logging.ClearProviders(); // Remove default logging providers
+builder.Logging.AddConsole();     // Keep console logging
 
 
 // Load .env file (for local development)
@@ -102,7 +102,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// JWT 配置
+// JWT setting
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
 var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
@@ -136,7 +136,7 @@ builder.Services.Configure<JwtSettings>(options =>
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // ?? 必须加上这行
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // 
 })
 .AddJwtBearer(options =>
 {
@@ -151,7 +151,7 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
     };
 
-    // ?? 阻止自动跳转 /Account/Login
+    // Prevent auto-redirect to /Account/Login
     options.Events = new JwtBearerEvents
     {
         OnChallenge = context =>
