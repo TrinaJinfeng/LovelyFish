@@ -206,7 +206,7 @@ namespace LovelyFish.Controllers
             var order = new Order
             {
                 UserId = userId,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
                 TotalPrice = finalTotal,
                 CustomerName = dto.CustomerName,
                 CustomerEmail = dto.CustomerEmail,
