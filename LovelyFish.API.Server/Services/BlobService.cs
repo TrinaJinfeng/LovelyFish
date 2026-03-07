@@ -1,33 +1,48 @@
-﻿using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using LovelyFish.API.Server.Models;
 
 namespace LovelyFish.API.Server.Services
 {
     public class BlobService
     {
-        private readonly BlobContainerClient _containerClient;
+        private readonly string _uploadDirectory;
+        private readonly string _apiBaseUrl;
 
-        public BlobService(IOptions<BlobSettings> options)
+        public BlobService(IOptions<BlobSettings> options, IOptions<EmailSettings> emailOptions)
         {
-            var blobSettings = options.Value;
-            var blobServiceClient = new BlobServiceClient(blobSettings.ConnectionString);
-            _containerClient = blobServiceClient.GetBlobContainerClient(blobSettings.ContainerName);
-            _containerClient.CreateIfNotExists(PublicAccessType.Blob);
+            _uploadDirectory = options.Value.UploadDirectory;
+            _apiBaseUrl = emailOptions.Value.ApiBaseUrl;
+
+            if (!Directory.Exists(_uploadDirectory))
+            {
+                Directory.CreateDirectory(_uploadDirectory);
+            }
         }
 
         public async Task<string> UploadFileAsync(Stream fileStream, string fileName)
         {
-            var blobClient = _containerClient.GetBlobClient(fileName);
-            await blobClient.UploadAsync(fileStream, true);
-            return blobClient.Uri.ToString();
+            //var extension = Path.GetExtension(fileName);
+            //var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(_uploadDirectory, fileName);
+
+            using (var fs = new FileStream(filePath, FileMode.Create))
+            {
+                await fileStream.CopyToAsync(fs);
+            }
+
+            return fileName;
         }
 
         public async Task DeleteFileAsync(string fileName)
         {
-            var blobClient = _containerClient.GetBlobClient(fileName);
-            await blobClient.DeleteIfExistsAsync();
+            var filePath = Path.Combine(_uploadDirectory, fileName);
+
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+
+            await Task.CompletedTask;
         }
     }
 }

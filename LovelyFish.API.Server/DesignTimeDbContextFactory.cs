@@ -20,7 +20,7 @@ namespace LovelyFish.API.Server
             string connectionString = configuration.GetConnectionString("DefaultConnection")!;
 
             var optionsBuilder = new DbContextOptionsBuilder<LovelyFishContext>();
-            optionsBuilder.UseSqlServer(connectionString);
+            optionsBuilder.UseNpgsql(connectionString);
 
             return new LovelyFishContext(optionsBuilder.Options);
         }

@@ -23,11 +23,12 @@ namespace LovelyFish.API.Server.Controllers
         }
 
         //// Build full URL for product image
-        //private string GetImageUrl(string fileName)
-        //{
-        //    if (string.IsNullOrEmpty(fileName)) return null;
-        //    return $"{_apiBaseUrl}/uploads/{fileName}";
-        //}
+       
+        private string? GetImageUrl(string? fileName)
+        {
+            if (string.IsNullOrEmpty(fileName)) return null;
+            return $"{_apiBaseUrl}/uploads/{fileName}";
+        }
 
         // ==================== Get products with filters and pagination ====================
         [HttpGet]
@@ -84,8 +85,8 @@ namespace LovelyFish.API.Server.Controllers
                 Features = p.Features.ToList(),
                 CategoryId = p.CategoryId,
                 CategoryTitle = p.Category?.Name,
-                ImageUrls = p.Images.Select(i => i.FileName).ToList(),
-                MainImageUrl = p.Images.FirstOrDefault()?.FileName,
+                ImageUrls = p.Images.Select(i => GetImageUrl(i.FileName)!).ToList(), 
+                MainImageUrl = p.Images.FirstOrDefault() != null ? GetImageUrl(p.Images.First().FileName) : null, 
                 IsClearance = p.IsClearance,
                 IsNewArrival = p.IsNewArrival
             }).ToList();
@@ -120,8 +121,8 @@ namespace LovelyFish.API.Server.Controllers
                 Features = product.Features.ToList(),
                 CategoryId = product.CategoryId,
                 CategoryTitle = product.Category?.Name,
-                ImageUrls = product.Images.Select(i => i.FileName).ToList(),
-                MainImageUrl = product.Images.FirstOrDefault()?.FileName,
+                ImageUrls = product.Images.Select(i => GetImageUrl(i.FileName)!).ToList(), 
+                MainImageUrl = product.Images.FirstOrDefault() != null ? GetImageUrl(product.Images.First().FileName) : null, 
                 IsClearance = product.IsClearance
             };
 

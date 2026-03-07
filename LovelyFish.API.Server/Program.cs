@@ -10,12 +10,11 @@ using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -------------------
-// Temporarily disable Azure Blob Trace Listener
-// -------------------
+//Logging
 builder.Logging.ClearProviders(); // Remove default logging providers
 builder.Logging.AddConsole();     // Keep console logging
 
@@ -50,9 +49,8 @@ builder.Services.AddSingleton<EmailService>();
 builder.Services.AddSingleton<BlobService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// -------------------
+
 // Controllers and JSON options
-// -------------------
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -61,43 +59,33 @@ builder.Services.AddControllers()
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
-// -------------------
+
 // Swagger configuration
-// -------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// -------------------
-// Database connection string setup
-// -------------------
-var rawConn = builder.Configuration.GetConnectionString("DefaultConnection");
-var dbServer = Environment.GetEnvironmentVariable("AZURE_SQL_SERVER");
-var dbName = Environment.GetEnvironmentVariable("AZURE_SQL_DB");
-var dbUser = Environment.GetEnvironmentVariable("AZURE_SQL_USER");
-var dbPass = Environment.GetEnvironmentVariable("AZURE_SQL_PASSWORD");
 
-Console.WriteLine("=== Environment Variables ===");
-Console.WriteLine($"AZURE_SQL_SERVER: {dbServer}");
-Console.WriteLine($"AZURE_SQL_DB:     {dbName}");
-Console.WriteLine($"AZURE_SQL_USER:   {dbUser}");
-Console.WriteLine("============================");
+//// Database connection string setup
+//var rawConn = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Build final connection string
-string finalConn = rawConn
-        .Replace("%AZURE_SQL_SERVER%", dbServer)
-        .Replace("%AZURE_SQL_DB%", dbName)
-        .Replace("%AZURE_SQL_USER%", dbUser)
-        .Replace("%AZURE_SQL_PASSWORD%", dbPass);
+// PostgreSQL Connection
+var pgHost = Environment.GetEnvironmentVariable("POSTGRES_HOST") ?? "localhost";
+var pgDb = Environment.GetEnvironmentVariable("POSTGRES_DB") ?? "lovelyfish";
+var pgUser = Environment.GetEnvironmentVariable("POSTGRES_USER") ?? "lovelyfishuser";
+var pgPass = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? "StrongPassword123";
 
 
-// Register DbContexts
+// PostgreSQL connection string
+string pgConn = $"Host={pgHost};Database={pgDb};Username={pgUser};Password={pgPass}";
+
+// Register DbContexts using PostgreSQL
 builder.Services.AddDbContext<LovelyFishContext>(options =>
-    options.UseSqlServer(finalConn, sqlOptions => sqlOptions.EnableRetryOnFailure()));
+    options.UseNpgsql(pgConn));
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(finalConn, sqlOptions => sqlOptions.EnableRetryOnFailure()));
+    options.UseNpgsql(pgConn));
 
-// Identity configuration (only JWT)
+// Identity & JWT
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -110,29 +98,14 @@ var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
 // Configure JwtSettings
 builder.Services.Configure<JwtSettings>(options =>
 {
-    options.Secret = jwtSecret ?? throw new InvalidOperationException("JWT_SECRET environment variable is required");
-    options.Issuer = jwtIssuer ?? throw new InvalidOperationException("JWT_ISSUER environment variable is required");
-    options.Audience = jwtAudience ?? throw new InvalidOperationException("JWT_AUDIENCE environment variable is required");
+    options.Secret = jwtSecret ?? throw new InvalidOperationException("JWT_SECRET environment required");
+    options.Issuer = jwtIssuer ?? throw new InvalidOperationException("JWT_ISSUER environment required");
+    options.Audience = jwtAudience ?? throw new InvalidOperationException("JWT_AUDIENCE environment required");
     options.ExpiryMinutes = 60; // Default expiry time
 });
 
-//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//    .AddJwtBearer(options =>
-//    {
-//        options.TokenValidationParameters = new TokenValidationParameters
-//        {
-//            ValidateIssuer = true,
-//            ValidateAudience = true,
-//            ValidateLifetime = true,
-//            ValidateIssuerSigningKey = true,
-//            ValidIssuer = jwtIssuer,
-//            ValidAudience = jwtAudience,
-//            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+Console.WriteLine($"[DEBUG] JWT Secret length: {Encoding.UTF8.GetBytes(jwtSecret).Length} bytes");
 
-//        };
-//    });
-
-//    });
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -168,14 +141,21 @@ builder.Services.AddAuthentication(options =>
 // Blob storage settings
 builder.Services.Configure<BlobSettings>(options =>
 {
-    options.ConnectionString = Environment.GetEnvironmentVariable("AZURE_BLOB_CONNECTION_STRING");
-    options.ContainerName = "uploads";
+    var uploadsPath = builder.Environment.IsDevelopment()
+        ? Path.Combine(Directory.GetCurrentDirectory(), "uploads")
+        : "/var/www/lovelyfish-backend/uploads";
+
+    if (!Directory.Exists(uploadsPath))
+    {
+        Directory.CreateDirectory(uploadsPath);
+    }
+
+    options.UploadDirectory = uploadsPath;
 });
 
 var frontendBaseUrl = builder.Configuration["FRONTEND_BASE_URL"];
 
-//CORS configuration(local + Azure front-end)
-//-------------------
+//CORS configuration
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
@@ -186,7 +166,7 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
-
+Console.WriteLine($"Frontend URL: {frontendBaseUrl}");
 
 // Build and configure app
 // -------------------
@@ -207,6 +187,22 @@ app.UseSwaggerUI(c =>
 app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+var uploadsPath = builder.Environment.IsDevelopment()
+    ? Path.Combine(Directory.GetCurrentDirectory(), "uploads")
+    : "/var/www/lovelyfish-backend/uploads";
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+//app.UseStaticFiles(new StaticFileOptions
+//{
+//    FileProvider = new PhysicalFileProvider(
+//        "/var/www/lovelyfish-backend/uploads"),
+//    RequestPath = "/uploads"
+//});
 
 app.UseRouting();
 app.UseCors("AllowReactApp");

@@ -15,8 +15,8 @@
         public string SenderName { get; set; } = "LovelyFishAquarium";
 
         // Frontend and backend URLs for generating links
-        public string FrontendBaseUrl { get; set; } = "https://kind-coast-0e9e19400.1.azurestaticapps.net";
-        public string ApiBaseUrl { get; set; } = "https://lovelyfish-backend-esgtdkf7h0e2ambg.australiaeast-01.azurewebsites.net";
+        public string FrontendBaseUrl { get; set; } = "http://localhost:3000";
+        public string ApiBaseUrl { get; set; } = "http://localhost:5062";
 
         // Admin email for receiving user messages (optional, defaults to FromEmail/FromName)
         public string AdminEmail { get; set; }
