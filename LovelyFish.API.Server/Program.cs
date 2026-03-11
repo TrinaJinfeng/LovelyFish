@@ -153,7 +153,12 @@ builder.Services.Configure<BlobSettings>(options =>
     options.UploadDirectory = uploadsPath;
 });
 
-var frontendBaseUrl = builder.Configuration["FRONTEND_BASE_URL"];
+//var frontendBaseUrl = builder.Configuration["FRONTEND_BASE_URL"];
+
+var frontendBaseUrl = Environment.GetEnvironmentVariable("FRONTEND_BASE_URL")
+                        ?? builder.Configuration["FRONTEND_BASE_URL"]
+                        ?? "http://localhost:3000";
+
 
 //CORS configuration
 builder.Services.AddCors(options =>
