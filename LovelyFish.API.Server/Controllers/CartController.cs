@@ -10,6 +10,7 @@ using System.Numerics;
 using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
+using LovelyFish.API.Server.Services;
 
 namespace LovelyFish.Controllers
 {
@@ -123,9 +124,10 @@ namespace LovelyFish.Controllers
         }
 
         [HttpPost("checkout")]
-        public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto, [FromServices] IOptions<EmailSettings> emailSettings)
+        //public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto, [FromServices] IOptions<EmailSettings> emailSettings)
+        public async Task<IActionResult> Checkout([FromBody] CheckoutDto dto, [FromServices] EmailService emailService)
         {
-            var settings = emailSettings.Value;
+            //var settings = emailSettings.Value;
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Unauthorized();
 
@@ -228,139 +230,211 @@ namespace LovelyFish.Controllers
             _context.CartItems.RemoveRange(cartItems);
             await _context.SaveChangesAsync();
 
-            // ==================== Brevo Email Notifications ====================
+            // ==================== EmailService ====================
             try
             {
-                var brevoApiKey = emailSettings.Value.BrevoApiKey;
-                using var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("accept", "application/json");
-                client.DefaultRequestHeaders.Add("api-key", brevoApiKey);
+                // User Email
+                var userHtml = $@"
+                <p>Hi {dto.CustomerName},</p>
+                <p>Thank you for your order with <strong>Lovely Fish Aquarium</strong>. We have received your order successfully.</p>
+                <h4>Order Details:</h4>
+                <ul>{string.Join("", cartItems.Select(c => $"<li>{c.Product.Title} × {c.Quantity} - {c.Product.Price:C}</li>"))}</ul>
+                <p>Original Total: {originalTotal:C}</p>
+                <p>Discount: {discount:C}</p>
+                <p><strong>Final Payment: {finalTotal:C}</strong></p>
+                <p>Bank: {emailService.Settings.BankName}<br>
+                Account Name: {emailService.Settings.AccountName}<br>
+                Account Number: {emailService.Settings.AccountNumber}</p>
+                <p>Please put your name and OrderId as reference.</p>
+                <p>Thank you for choosing Lovely Fish Aquarium!</p>
+                ";
 
-                // =========== User Email Content ==========
-                string BuildUserHtmlContent(string name)
-                {
-                    var sb = new StringBuilder();
-                    sb.Append($"<p>Hi {name},</p>");
-                    sb.Append("<p>Thank you for your order with <strong>Lovely Fish Aquarium</strong>. We are pleased to confirm that we have received your order successfully.</p>");
+                var userText = $@"
+                Hi {dto.CustomerName},
 
-                    sb.Append("<h4>Order Details:</h4><ul>");
-                    foreach (var item in cartItems)
-                        sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {item.Product.Price:C}</li>");
-                    sb.Append("</ul>");
+                Thank you for your order with Lovely Fish Aquarium. We have received your order successfully.
 
-                    sb.Append($"<p>Original Total: {originalTotal:C}</p>");
-                    sb.Append($"<p>Discount: {discount:C}</p>");
-                    sb.Append($"<p><strong>Final Payment: {finalTotal:C}</strong></p>");
+                Order Details:
+                {string.Join("\n", cartItems.Select(c => $"- {c.Product.Title} × {c.Quantity} - {c.Product.Price:C}"))}
 
-                    sb.Append("<p>If you prefer to pick up your order, we will provide our store address. You may pay in cash or make a bank transfer using the following details:</p>");
-                    sb.Append("<p><strong>Bank:</strong> " + emailSettings.Value.BankName + "<br>");
-                    sb.Append("<strong>Account Name:</strong> " + emailSettings.Value.AccountName + "<br>");
-                    sb.Append("<strong>Account Number:</strong> " + emailSettings.Value.AccountNumber + "</p>");
+                Original Total: {originalTotal:C}
+                Discount: {discount:C}
+                Final Payment: {finalTotal:C}
 
-                    sb.Append("<p>If you prefer courier delivery, we will email you shortly with the updated total including courier fees.</p>");
+                Bank: {emailService.Settings.BankName}
+                Account Name: {emailService.Settings.AccountName}
+                Account Number: {emailService.Settings.AccountNumber}
 
-                    //sb.Append($"<p><strong>Order Reference Number:</strong> {referenceNumber}</p>");
-                    sb.Append("<p><strong>Please put your name and OrderId as reference </p>");
-                    sb.Append("<p>Once your payment is confirmed, we will process and dispatch your order promptly. You can also track your order anytime in your account under <em>Orders</em>.</p>");
-                    sb.Append("<p>Thank you for choosing Lovely Fish Aquarium!</p>");
+                Please put your name and OrderId as reference.
 
-                    return sb.ToString();
-                }
+                Thank you for choosing Lovely Fish Aquarium!
+";
 
-                string BuildUserTextContent(string name)
-                {
-                    var sb = new StringBuilder();
-                    sb.AppendLine($"Hi {name},");
-                    sb.AppendLine();
-                    sb.AppendLine("Thank you for your order with Lovely Fish Aquarium. We are pleased to confirm that we have received your order successfully.");
-                    sb.AppendLine();
-                    
-                    sb.AppendLine();
-                    sb.AppendLine("Order Details:");
-                    foreach (var item in cartItems)
-                        sb.AppendLine($"- {item.Product.Title} × {item.Quantity} - {item.Product.Price:C}");
-                    sb.AppendLine();
-                    sb.AppendLine($"Original Total: {originalTotal:C}");
-                    sb.AppendLine($"Discount: {discount:C}");
-                    sb.AppendLine($"Final Payment: {finalTotal:C}");
-                    sb.AppendLine();
-                    sb.AppendLine("If you prefer to pick up your order, we will provide our store address. You may pay in cash or make a bank transfer using the following details:");
-                    sb.AppendLine($"Bank: {emailSettings.Value.BankName}");
-                    sb.AppendLine($"Account Name: {emailSettings.Value.AccountName}");
-                    sb.AppendLine($"Account Number: {emailSettings.Value.AccountNumber}");
-                    
-                    sb.AppendLine();
-                    sb.AppendLine("If you prefer courier delivery, we will email you shortly with the updated total including courier fees.");
-                    sb.AppendLine();
-                    sb.AppendLine("Please put your name and OrderId as reference");
-                    sb.AppendLine();
-                    sb.AppendLine("Once your payment is confirmed, we will process and dispatch your order promptly. You can also track your order anytime in your account under Orders.");
-                    sb.AppendLine();
-                    sb.AppendLine("Thank you for choosing Lovely Fish Aquarium!");
+                await emailService.SendEmail(user.Email, dto.CustomerName, "Order Confirmation - LovelyFishAquarium", userHtml, userText);
 
-                    return sb.ToString();
-                }
+                // Admin Email
+                var adminHtml = $@"
+                <h3>📢 New Order Notification</h3>
+                <p><strong>Order ID:</strong> {order.Id}</p>
+                <p><strong>Customer Name:</strong> {order.CustomerName}</p>
+                <p><strong>Customer Email:</strong> {order.CustomerEmail}</p>
+                <h4>Order Details:</h4>
+                <ul>{string.Join("", cartItems.Select(c => $"<li>{c.Product.Title} × {c.Quantity} - {(c.Product.Price * c.Quantity):C}</li>"))}</ul>
+                <p><strong>Final Payment: {finalTotal:C}</strong></p>
+                <p>Please check the admin panel for more details.</p>
+                ";
 
-                // ========= Admin Email Content ========
-                string BuildAdminHtmlContent(Order order)
-                {
-                    var sb = new StringBuilder();
-                    sb.Append("<h3>📢 New Order Notification</h3>");
-                    sb.Append($"<p><strong>Order ID:</strong> {order.Id}</p>");
-                    sb.Append($"<p><strong>Customer Name:</strong> {order.CustomerName}</p>");
-                    sb.Append($"<p><strong>Customer Email:</strong> {order.CustomerEmail}</p>");
-                    sb.Append("<h4>Order Details:</h4><ul>");
-                    foreach (var item in cartItems)
-                        sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {(item.Product.Price * item.Quantity):C}</li>");
-                    sb.Append("</ul>");
-                    sb.Append($"<p><strong>Final Payment: {finalTotal:C}</strong></p>");
-                    sb.Append("<p>Please check the admin panel for more details.</p>");
-                    return sb.ToString();
-                }
+                var adminText = $@"
+                📢 New Order Notification
+                Order ID: {order.Id}
+                Customer Name: {order.CustomerName}
+                Customer Email: {order.CustomerEmail}
+                Order Details:
+                {string.Join("\n", cartItems.Select(c => $"- {c.Product.Title} × {c.Quantity} - {(c.Product.Price * c.Quantity):C}"))}
+                Final Payment: {finalTotal:C}
+                Please check the admin panel for more details.
+                ";
 
-                string BuildAdminTextContent(Order order)
-                {
-                    var sb = new StringBuilder();
-                    sb.AppendLine("📢 New Order Notification");
-                    sb.AppendLine($"Order ID: {order.Id}");
-                    sb.AppendLine($"Customer Name: {order.CustomerName}");
-                    sb.AppendLine($"Customer Email: {order.CustomerEmail}");
-                    sb.AppendLine("Order Details:");
-                    foreach (var item in cartItems)
-                        sb.AppendLine($"{item.Product.Title} × {item.Quantity} - {(item.Product.Price * item.Quantity):C}");
-                    sb.AppendLine($"Final Payment: {finalTotal:C}");
-                    sb.AppendLine("Please check the admin panel for more details.");
-                    return sb.ToString();
-                }
-
-                // ====== Send Emails ======
-                var userPayload = new
-                {
-                    sender = new { email = settings.FromEmail, name = settings.FromName },
-                    to = new[] { new { email = user.Email, name = dto.CustomerName } },
-                    subject = "Order Confirmation - LovelyFishAquarium",
-                    htmlContent = BuildUserHtmlContent(dto.CustomerName),
-                    textContent = BuildUserTextContent(dto.CustomerName)
-                };
-                var userContent = new StringContent(JsonSerializer.Serialize(userPayload), Encoding.UTF8, "application/json");
-                await client.PostAsync("https://api.brevo.com/v3/smtp/email", userContent);
-
-                var adminPayload = new
-                {
-                    sender = new { email = settings.FromEmail, name = settings.FromName },
-                    to = new[] { new { email = settings.AdminEmail, name = settings.AdminName } },
-                    subject = "New Order Notification - LovelyFishAquarium",
-                    htmlContent = BuildAdminHtmlContent(order),
-                    textContent = BuildAdminTextContent(order)
-                };
-                var adminContent = new StringContent(JsonSerializer.Serialize(adminPayload), Encoding.UTF8, "application/json");
-                await client.PostAsync("https://api.brevo.com/v3/smtp/email", adminContent);
+                await emailService.SendEmail(emailService.Settings.AdminEmail, emailService.Settings.AdminName, "New Order Notification - LovelyFishAquarium", adminHtml, adminText);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[Brevo Email Error] " + ex.Message);
-                // Email failure does not affect order saving
+                Console.WriteLine("[EmailService Error] " + ex.Message);
+                
             }
+
+            //try
+            //{
+            //    var brevoApiKey = emailSettings.Value.BrevoApiKey;
+            //    using var client = new HttpClient();
+            //    client.DefaultRequestHeaders.Add("accept", "application/json");
+            //    client.DefaultRequestHeaders.Add("api-key", brevoApiKey);
+
+            //    // =========== User Email Content ==========
+            //    string BuildUserHtmlContent(string name)
+            //    {
+            //        var sb = new StringBuilder();
+            //        sb.Append($"<p>Hi {name},</p>");
+            //        sb.Append("<p>Thank you for your order with <strong>Lovely Fish Aquarium</strong>. We are pleased to confirm that we have received your order successfully.</p>");
+
+            //        sb.Append("<h4>Order Details:</h4><ul>");
+            //        foreach (var item in cartItems)
+            //            sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {item.Product.Price:C}</li>");
+            //        sb.Append("</ul>");
+
+            //        sb.Append($"<p>Original Total: {originalTotal:C}</p>");
+            //        sb.Append($"<p>Discount: {discount:C}</p>");
+            //        sb.Append($"<p><strong>Final Payment: {finalTotal:C}</strong></p>");
+
+            //        sb.Append("<p>If you prefer to pick up your order, we will provide our store address. You may pay in cash or make a bank transfer using the following details:</p>");
+            //        sb.Append("<p><strong>Bank:</strong> " + emailSettings.Value.BankName + "<br>");
+            //        sb.Append("<strong>Account Name:</strong> " + emailSettings.Value.AccountName + "<br>");
+            //        sb.Append("<strong>Account Number:</strong> " + emailSettings.Value.AccountNumber + "</p>");
+
+            //        sb.Append("<p>If you prefer courier delivery, we will email you shortly with the updated total including courier fees.</p>");
+
+            //        //sb.Append($"<p><strong>Order Reference Number:</strong> {referenceNumber}</p>");
+            //        sb.Append("<p><strong>Please put your name and OrderId as reference </p>");
+            //        sb.Append("<p>Once your payment is confirmed, we will process and dispatch your order promptly. You can also track your order anytime in your account under <em>Orders</em>.</p>");
+            //        sb.Append("<p>Thank you for choosing Lovely Fish Aquarium!</p>");
+
+            //        return sb.ToString();
+            //    }
+
+            //    string BuildUserTextContent(string name)
+            //    {
+            //        var sb = new StringBuilder();
+            //        sb.AppendLine($"Hi {name},");
+            //        sb.AppendLine();
+            //        sb.AppendLine("Thank you for your order with Lovely Fish Aquarium. We are pleased to confirm that we have received your order successfully.");
+            //        sb.AppendLine();
+
+            //        sb.AppendLine();
+            //        sb.AppendLine("Order Details:");
+            //        foreach (var item in cartItems)
+            //            sb.AppendLine($"- {item.Product.Title} × {item.Quantity} - {item.Product.Price:C}");
+            //        sb.AppendLine();
+            //        sb.AppendLine($"Original Total: {originalTotal:C}");
+            //        sb.AppendLine($"Discount: {discount:C}");
+            //        sb.AppendLine($"Final Payment: {finalTotal:C}");
+            //        sb.AppendLine();
+            //        sb.AppendLine("If you prefer to pick up your order, we will provide our store address. You may pay in cash or make a bank transfer using the following details:");
+            //        sb.AppendLine($"Bank: {emailSettings.Value.BankName}");
+            //        sb.AppendLine($"Account Name: {emailSettings.Value.AccountName}");
+            //        sb.AppendLine($"Account Number: {emailSettings.Value.AccountNumber}");
+
+            //        sb.AppendLine();
+            //        sb.AppendLine("If you prefer courier delivery, we will email you shortly with the updated total including courier fees.");
+            //        sb.AppendLine();
+            //        sb.AppendLine("Please put your name and OrderId as reference");
+            //        sb.AppendLine();
+            //        sb.AppendLine("Once your payment is confirmed, we will process and dispatch your order promptly. You can also track your order anytime in your account under Orders.");
+            //        sb.AppendLine();
+            //        sb.AppendLine("Thank you for choosing Lovely Fish Aquarium!");
+
+            //        return sb.ToString();
+            //    }
+
+            //    // ========= Admin Email Content ========
+            //    string BuildAdminHtmlContent(Order order)
+            //    {
+            //        var sb = new StringBuilder();
+            //        sb.Append("<h3>📢 New Order Notification</h3>");
+            //        sb.Append($"<p><strong>Order ID:</strong> {order.Id}</p>");
+            //        sb.Append($"<p><strong>Customer Name:</strong> {order.CustomerName}</p>");
+            //        sb.Append($"<p><strong>Customer Email:</strong> {order.CustomerEmail}</p>");
+            //        sb.Append("<h4>Order Details:</h4><ul>");
+            //        foreach (var item in cartItems)
+            //            sb.Append($"<li>{item.Product.Title} × {item.Quantity} - {(item.Product.Price * item.Quantity):C}</li>");
+            //        sb.Append("</ul>");
+            //        sb.Append($"<p><strong>Final Payment: {finalTotal:C}</strong></p>");
+            //        sb.Append("<p>Please check the admin panel for more details.</p>");
+            //        return sb.ToString();
+            //    }
+
+            //    string BuildAdminTextContent(Order order)
+            //    {
+            //        var sb = new StringBuilder();
+            //        sb.AppendLine("📢 New Order Notification");
+            //        sb.AppendLine($"Order ID: {order.Id}");
+            //        sb.AppendLine($"Customer Name: {order.CustomerName}");
+            //        sb.AppendLine($"Customer Email: {order.CustomerEmail}");
+            //        sb.AppendLine("Order Details:");
+            //        foreach (var item in cartItems)
+            //            sb.AppendLine($"{item.Product.Title} × {item.Quantity} - {(item.Product.Price * item.Quantity):C}");
+            //        sb.AppendLine($"Final Payment: {finalTotal:C}");
+            //        sb.AppendLine("Please check the admin panel for more details.");
+            //        return sb.ToString();
+            //    }
+
+            //    // ====== Send Emails ======
+            //    var userPayload = new
+            //    {
+            //        sender = new { email = settings.FromEmail, name = settings.FromName },
+            //        to = new[] { new { email = user.Email, name = dto.CustomerName } },
+            //        subject = "Order Confirmation - LovelyFishAquarium",
+            //        htmlContent = BuildUserHtmlContent(dto.CustomerName),
+            //        textContent = BuildUserTextContent(dto.CustomerName)
+            //    };
+            //    var userContent = new StringContent(JsonSerializer.Serialize(userPayload), Encoding.UTF8, "application/json");
+            //    await client.PostAsync("https://api.brevo.com/v3/smtp/email", userContent);
+
+            //    var adminPayload = new
+            //    {
+            //        sender = new { email = settings.FromEmail, name = settings.FromName },
+            //        to = new[] { new { email = settings.AdminEmail, name = settings.AdminName } },
+            //        subject = "New Order Notification - LovelyFishAquarium",
+            //        htmlContent = BuildAdminHtmlContent(order),
+            //        textContent = BuildAdminTextContent(order)
+            //    };
+            //    var adminContent = new StringContent(JsonSerializer.Serialize(adminPayload), Encoding.UTF8, "application/json");
+            //    await client.PostAsync("https://api.brevo.com/v3/smtp/email", adminContent);
+            //}
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine("[Brevo Email Error] " + ex.Message);
+            //    // Email failure does not affect order saving
+            //}
 
             return Ok(new
             {

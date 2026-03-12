@@ -3,16 +3,22 @@
     // Configuration class for email and payment-related settings
     public class EmailSettings
     {
-        // Brevo (formerly Sendinblue) API Key for sending emails
-        public string BrevoApiKey { get; set; }
+        //SMTP
+        public string SmtpHost { get; set; } = "smtp.zoho.com";
+        public int SmtpPort { get; set; } = 587; //TLS port
+        public string SmtpUser { get; set; } // info@lovelyfishaquarium.co.nz
+        public string SmtpPassword { get; set; } //zoho password
+
 
         // Default sender email and name
         public string FromEmail { get; set; } = "info@lovelyfishaquarium.co.nz";
         public string FromName { get; set; } = "LovelyFishAquarium";
 
+
         // Alternative sender info (optional, can be same as FromEmail/FromName)
         public string SenderEmail { get; set; } = "info@lovelyfishaquarium.co.nz";
         public string SenderName { get; set; } = "LovelyFishAquarium";
+
 
         // Frontend and backend URLs for generating links
         public string FrontendBaseUrl { get; set; } = "http://localhost:3000";

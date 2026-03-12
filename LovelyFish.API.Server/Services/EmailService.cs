@@ -1,25 +1,28 @@
 ﻿using LovelyFish.API.Server.Models;
 using Microsoft.Extensions.Options;
+using System.Threading.Tasks;
+using MailKit.Net.Smtp;
+using MimeKit;
+
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace LovelyFish.API.Server.Services
 {
     public class EmailService
     {
         private readonly EmailSettings _settings;
-        private readonly HttpClient _httpClient;
+       // private readonly HttpClient _httpClient;
 
         // Constructor injects EmailSettings and initializes HttpClient
         public EmailService(IOptions<EmailSettings> options)
         {
             _settings = options.Value;
 
-            _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("accept", "application/json");
-            _httpClient.DefaultRequestHeaders.Add("api-key", _settings.BrevoApiKey);
+          //  _httpClient = new HttpClient();
+          //  _httpClient.DefaultRequestHeaders.Add("accept", "application/json");
+          //  _httpClient.DefaultRequestHeaders.Add("api-key", _settings.BrevoApiKey);
         }
 
         public EmailSettings Settings => _settings; // Expose settings externally
@@ -35,32 +38,60 @@ namespace LovelyFish.API.Server.Services
         /// <returns>True if email sent successfully, otherwise false</returns>
         public async Task<bool> SendEmail(string toEmail, string toName, string subject, string htmlContent, string textContent = null)
         {
-            if (string.IsNullOrEmpty(_settings.BrevoApiKey))
-                return false;
+            //if (string.IsNullOrEmpty(_settings.BrevoApiKey))
+            //    return false;
 
             textContent ??= htmlContent; // Use HTML as fallback for plain text
 
             try
             {
-                var payload = new
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_settings.FromName, _settings.FromEmail));
+                email.To.Add(new MailboxAddress(toName ?? toEmail, toEmail));
+                email.Subject = subject;
+
+                var builder = new BodyBuilder
                 {
-                    sender = new { email = _settings.FromEmail, name = _settings.FromName },
-                    to = new[] { new { email = toEmail, name = toName } },
-                    subject,
-                    htmlContent,
-                    textContent
+                    HtmlBody = htmlContent,
+                    TextBody = textContent
                 };
+                email.Body = builder.ToMessageBody();
 
-                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync("https://api.brevo.com/v3/smtp/email", content);
+                using var client = new SmtpClient();
+                await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, MailKit.Security.SecureSocketOptions.StartTls);
+                await client.AuthenticateAsync(_settings.SmtpUser, _settings.SmtpPassword);
+                await client.SendAsync(email);
+                await client.DisconnectAsync(true);
 
-                return response.IsSuccessStatusCode;
+                return true;
             }
-            catch
+            //{
+            //    var payload = new
+            //    {
+            //        sender = new { email = _settings.FromEmail, name = _settings.FromName },
+            //        to = new[] { new { email = toEmail, name = toName } },
+            //        subject,
+            //        htmlContent,
+            //        textContent
+            //    };
+
+            //    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            //    var response = await _httpClient.PostAsync("https://api.brevo.com/v3/smtp/email", content);
+
+            //    return response.IsSuccessStatusCode;
+            //}
+            //catch
+            //{
+            //    return false;
+            //}
+
+            catch (System.Exception ex)
             {
+                Console.WriteLine("[Zoho Email Error] " + ex.Message);
                 return false;
             }
         }
+        
 
         /// <summary>
         /// Sends emails to admin email defined in EmailSettings

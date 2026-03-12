@@ -31,21 +31,27 @@ builder.Configuration.AddEnvironmentVariables();
 // Inject EmailSettings from environment variables
 builder.Services.Configure<EmailSettings>(options =>
 {
-    options.BrevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
-    options.FromEmail = Environment.GetEnvironmentVariable("FROM_EMAIL");
-    options.FromName = Environment.GetEnvironmentVariable("FROM_NAME");
-    options.AdminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
-    options.AdminName = Environment.GetEnvironmentVariable("ADMIN_NAME");
-    options.BankName = Environment.GetEnvironmentVariable("BANK_NAME");
-    options.AccountNumber = Environment.GetEnvironmentVariable("ACCOUNT_NUMBER");
-    options.AccountName = Environment.GetEnvironmentVariable("ACCOUNT_NAME");
-    options.FrontendBaseUrl = Environment.GetEnvironmentVariable("FRONTEND_BASE_URL");
-    options.ApiBaseUrl = Environment.GetEnvironmentVariable("API_BASE_URL");
+    //options.BrevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
+    options.SmtpHost = Environment.GetEnvironmentVariable("SMTP_HOST") ?? "smtp.zoho.com";
+    options.SmtpPort = int.Parse(Environment.GetEnvironmentVariable("SMTP_PORT") ?? "587");
+    options.SmtpUser = Environment.GetEnvironmentVariable("SMTP_USER") ?? "info@lovelyfishaquarium.co.nz";
+    options.SmtpPassword = Environment.GetEnvironmentVariable("SMTP_PASS") ?? ""; // Zoho App Password
+
+
+    options.FromEmail = Environment.GetEnvironmentVariable("FROM_EMAIL") ?? "info@lovelyfishaquarium.co.nz";
+    options.FromName = Environment.GetEnvironmentVariable("FROM_NAME") ?? "LovelyFishAquarium";
+    options.AdminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL") ?? "info@lovelyfishaquarium.co.nz";
+    options.AdminName = Environment.GetEnvironmentVariable("ADMIN_NAME") ?? "LovelyFishAquarium";
+    options.BankName = Environment.GetEnvironmentVariable("BANK_NAME") ?? "ASB";
+    options.AccountNumber = Environment.GetEnvironmentVariable("ACCOUNT_NUMBER") ?? "123456";
+    options.AccountName = Environment.GetEnvironmentVariable("ACCOUNT_NAME") ?? "HAITAO ZHANG";
+    options.FrontendBaseUrl = Environment.GetEnvironmentVariable("FRONTEND_BASE_URL") ?? "http://localhost:3000";
+    options.ApiBaseUrl = Environment.GetEnvironmentVariable("API_BASE_URL") ?? "http://localhost:5062";
 
 });
 
 // inject services
-builder.Services.AddSingleton<EmailService>();
+builder.Services.AddTransient< EmailService >();
 builder.Services.AddSingleton<BlobService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
@@ -77,6 +83,7 @@ var pgPass = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? "StrongP
 
 // PostgreSQL connection string
 string pgConn = $"Host={pgHost};Database={pgDb};Username={pgUser};Password={pgPass}";
+Console.WriteLine($"[DEBUG] PG Conn: {pgConn}");
 
 // Register DbContexts using PostgreSQL
 builder.Services.AddDbContext<LovelyFishContext>(options =>
