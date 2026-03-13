@@ -21,8 +21,7 @@ namespace LovelyFish.API.Server.Services
 
         public async Task<string> UploadFileAsync(Stream fileStream, string fileName)
         {
-            //var extension = Path.GetExtension(fileName);
-            //var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+           
             var filePath = Path.Combine(_uploadDirectory, fileName);
 
             using (var fs = new FileStream(filePath, FileMode.Create))

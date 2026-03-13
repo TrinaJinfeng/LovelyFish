@@ -99,7 +99,6 @@ namespace LovelyFish.API.Server.Controllers
         [HttpPost("forgot-password")]
 
         //Sends password reset link to admin email using Brevo API
-        //public async Task<IActionResult> ForgotPassword(AdminForgotPasswordRequest model, [FromServices] IOptions<EmailSettings> emailSettings)
         public async Task<IActionResult> ForgotPassword(AdminForgotPasswordRequest model, [FromServices] EmailService emailService)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -111,49 +110,8 @@ namespace LovelyFish.API.Server.Controllers
             // Generate reset token
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-            // Generate reset link
-           // var resetLink = $"{emailSettings.Value.FrontendBaseUrl}/admin/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
+            // Generate reset link       
             var resetLink = $"{emailService.Settings.FrontendBaseUrl}/admin/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
-
-
-            //try
-            //{
-            //    using var client = new HttpClient();
-            //    client.DefaultRequestHeaders.Add("accept", "application/json");
-            //    client.DefaultRequestHeaders.Add("api-key", emailSettings.Value.BrevoApiKey);
-
-            //    var htmlContent = $"<p>Hi {user.Name ?? user.Email},</p>" +
-            //                      $"<p>Please click the link below to reset your admin password:</p>" +
-            //                      $"<p><a href='{resetLink}'>Reset Password</a></p>" +
-            //                      "<p>If you did not request a password reset, please ignore this email.</p>";
-
-            //    var textContent = $"Hi {user.Name ?? user.Email},\n\n" +
-            //                      $"Please click the link below to reset your admin password:\n{resetLink}\n\n" +
-            //                      "If you did not request a password reset, please ignore this email.";
-
-            //    Console.WriteLine("===== HTML Content =====");
-            //    Console.WriteLine(htmlContent);
-            //    Console.WriteLine("=======================");
-
-            //    var payload = new
-            //    {
-            //        sender = new { email = emailSettings.Value.SenderEmail, name = emailSettings.Value.SenderName },
-            //        to = new[] { new { email = model.Email, name = user.Name ?? model.Email } },
-            //        subject = "Admin Password Reset - LovelyFishAquarium",
-            //        htmlContent,
-            //        textContent
-            //    };
-
-            //    var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            //    await client.PostAsync("https://api.brevo.com/v3/smtp/email", content);
-            //}
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine("[Brevo Email Error] " + ex.Message);
-            //    // Email failure does not affect the response
-            //}
-
-            //return Ok(new { message = "If that email exists, a reset link has been sent" });
 
             var htmlContent = $"<p>Hi {user.Name ?? user.Email},</p>" +
                       $"<p>Please click the link below to reset your admin password:</p>" +

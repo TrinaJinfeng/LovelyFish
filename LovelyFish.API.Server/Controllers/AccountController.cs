@@ -165,7 +165,7 @@ namespace LovelyFish.API.Server.Controllers
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
             {
-                // 避免账号枚举
+                
                 return Ok(new { message = "If that email exists, a reset link has been sent" });
             }
 
@@ -173,7 +173,7 @@ namespace LovelyFish.API.Server.Controllers
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var resetLink = $"{_emailService.Settings.FrontendBaseUrl}/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
             Console.WriteLine($"Reset Link: {resetLink}");
-            // 邮件内容
+            // Email content
             var htmlContent = $@"
                 <p>Hi {user.Name ?? user.Email},</p>
                 <p>Please click the following link to reset your password:</p>
@@ -190,7 +190,7 @@ namespace LovelyFish.API.Server.Controllers
                 If you did not request a password reset, please ignore this email.
                             ";
 
-            // 发送邮件
+            // Send email
             await _emailService.SendEmail(
                 toEmail: model.Email,
                 toName: user.Name ?? model.Email,
@@ -201,69 +201,6 @@ namespace LovelyFish.API.Server.Controllers
 
             return Ok(new { message = "If that email exists, a reset link has been sent" });
         }
-
-        //        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest model, [FromServices] IOptions<EmailSettings> emailSettings)
-        //        {
-        //            if (string.IsNullOrWhiteSpace(model.Email))
-        //                return BadRequest(new { message = "Email is required" });
-
-        //            var user = await _userManager.FindByEmailAsync(model.Email);
-        //            if (user == null)
-        //            {
-        //                // Return OK even if user does not exist, to avoid account enumeration
-        //                return Ok(new { message = "If that email exists, a reset link has been sent" });
-        //            }
-
-        //            // Generate reset token
-        //            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        //            var resetLink = $"{emailSettings.Value.FrontendBaseUrl}/reset-password?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}";
-
-        //            try
-        //            {
-        //                using var client = new HttpClient();
-        //                client.DefaultRequestHeaders.Add("accept", "application/json");
-        //                client.DefaultRequestHeaders.Add("api-key", emailSettings.Value.BrevoApiKey);
-
-        //                var htmlContent = $@"
-        //                                    <p>Hi {user.Name ?? user.Email},</p>
-        //                                    <p>Please click the following link to reset your password:</p>
-        //                                    <p><a href='{resetLink}' target='_blank'>Reset Password</a></p>
-        //                                    <p>If you did not request a password reset, please ignore this email.</p>
-        //";
-
-        //                var textContent = $@"
-        //                                    Hi {user.Name ?? user.Email},
-
-        //                                    Please click the following link to reset your password:
-        //                                    {resetLink}
-
-        //                                    If you did not request a password reset, please ignore this email.
-        //                                    ";
-
-        //                Console.WriteLine("===== HTML Content =====");
-        //                Console.WriteLine(htmlContent);
-        //                Console.WriteLine("====================");
-
-        //                var payload = new
-        //                {
-        //                    sender = new { email = emailSettings.Value.SenderEmail, name = emailSettings.Value.SenderName },
-        //                    to = new[] { new { email = model.Email, name = user.Name ?? model.Email } },
-        //                    subject = "Password Reset - LovelyFishAquarium",
-        //                    htmlContent,
-        //                    textContent
-        //                };
-
-        //                var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        //                await client.PostAsync("https://api.brevo.com/v3/smtp/email", content);
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                Console.WriteLine("[Brevo Email Error] " + ex.Message);
-        //                // Even if email fails, do not expose details to client
-        //            }
-
-        //            return Ok(new { message = "If that email exists, a reset link has been sent" });
-        //        }
 
 
         // Reset password using token
