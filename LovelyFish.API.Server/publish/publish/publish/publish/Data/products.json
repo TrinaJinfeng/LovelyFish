@@ -1,0 +1,103 @@
+﻿[
+    {
+
+        "name": "WP-350S 3000L/H",
+        "price": 55,
+        "output": 3000,
+        "wattage": 60,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Water Pump",
+        "features": "output: 3000L/hr, wattage: 60W, Energy-efficient design, Quiet operation, Easy to install and maintain"
+    },
+
+    {
+
+        "name": "Ceramic Tube Heater LE-500W",
+        "price": 18,
+        "output": 0,
+        "wattage": 100,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Heater",
+        "features": "wattage: 100W, suitable for tank below 100L"
+    },
+
+
+    {
+
+        "name": "LED-3300C 3in1 Large submersible filter pump",
+        "price": 40,
+        "output": 2000,
+        "wattage": 25,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Filter",
+        "features": "output: 2000L/hr, wattage: 25W, suitable for tank below 150L"
+    },
+
+    {
+
+        "name": "Air pump 4 outlets SB-988 12W",
+        "price": 60,
+        "output": 3,
+        "wattage": 8,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Air Pump",
+        "features": "output: 3.4L/hr per outlet, wattage: 8W, 4outlets"
+    },
+
+    {
+
+        "name": "Double heads wave maker YP-201",
+        "price": 20,
+        "output": 4,
+        "wattage": 12,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Wave Maker",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
+    },
+
+    {
+
+        "name": "Mixed Filtration 500g/bag",
+        "price": 20,
+        "output": 0,
+        "wattage": 0,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Filtration",
+        "features": "none"
+    },
+
+    {
+
+        "name": "Led Crystal Aquarium Light 35T-02",
+        "price": 40,
+        "output": 0,
+        "wattage": 12,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Led Light",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
+    },
+
+    {
+
+        "name": "Corner Sponge Filter XY-2010",
+        "price": 10,
+        "output": 0,
+        "wattage": 0,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Foam and Sponge Filter",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
+    },
+
+    {
+
+        "name": "Air stone 8cm",
+        "price": 20,
+        "output": 0,
+        "wattage": 0,
+        "image": "../assets/uploads/hm.jpg",
+        "category": "Other",
+        "features": "output: 4L/hr per outlet, wattage: 12W, 4outlets"
+    }
+
+
+]
